@@ -1656,11 +1656,11 @@ return { fixLegibility };
 
 // ---- src/bbm-player.js
 const { buildPlayer } = (() => {
-// Playerinfo hero: the site lists twelve badge facts in a flat strip under
-// the heading. Fold them into one card: a big headshot, the name with team
-// and positions, the labeled facts as a meta grid, and the page's own actions.
-// Nodes move, never clones, so the watch button, depth link and customize
-// link keep working.
+// Playerinfo hero and tooling. The badge strip becomes one card: a big
+// headshot, the name with status and positions, and the facts as a two-sided
+// table on the right. The page actions and view toggles move into one toolbox
+// section, the schedule strip becomes day cards, and the stat toggles become
+// grouped chips. Nodes move, never clones, so postbacks keep working.
 
 
 const text = (node) => node?.textContent?.trim() ?? "";
@@ -1675,29 +1675,44 @@ function parseHeading(h1) {
   return { name, team, positions };
 }
 
-// Labeled badge items become meta facts; unlabeled ones (links, the watch
-// button) become hero actions. Children move with their listeners attached.
-function collectFacts(badge) {
-  const meta = document.createElement("dl");
-  meta.className = "cgm-hero-meta";
-  const actions = document.createElement("div");
-  actions.className = "cgm-hero-actions";
+const STATUS_TINT = [
+  [/probable/i, "#16a34a"],
+  [/questionable/i, "#d97706"],
+  [/doubtful/i, "#ea580c"],
+  [/\bout\b/i, "#dc2626"],
+];
+
+function statusPill(value) {
+  const pill = document.createElement("span");
+  pill.className = "cgm-hero-status";
+  pill.textContent = value;
+  const tint = STATUS_TINT.find(([pattern]) => pattern.test(value));
+  pill.style.backgroundColor = tint ? tint[1] : "#64748b";
+  return pill;
+}
+
+// Labeled badge items split three ways: the status fact joins the name, the
+// positions fact is already shown as pills, and the rest become table pairs.
+// Unlabeled items (links, the watch button) are page actions.
+function collectBadge(badge) {
+  const pairs = [];
+  const actions = [];
+  let status = null;
   for (const item of [...badge.querySelectorAll(".player-stat-badge-item")]) {
     const label = text(item.querySelector(".player-stat-badge-label"));
     const rest = [...item.childNodes].filter((node) => !node.classList?.contains("player-stat-badge-label"));
     if (!label) {
-      actions.append(...rest);
+      actions.push(...rest);
       continue;
     }
-    const fact = document.createElement("div");
-    fact.className = "cgm-hero-fact";
-    fact.append(Object.assign(document.createElement("dt"), { textContent: label }));
-    const value = document.createElement("dd");
-    value.append(...rest);
-    fact.append(value);
-    meta.append(fact);
+    if (/status/i.test(label) && !/questionable|games/i.test(label)) {
+      status = rest.map(text).filter(Boolean).join(" ") || text(item);
+      continue;
+    }
+    if (/positions? played/i.test(label)) continue;
+    pairs.push({ label, nodes: rest });
   }
-  return { meta, actions };
+  return { pairs, actions, status };
 }
 
 function buildSub(team, positions) {
@@ -1712,15 +1727,27 @@ function buildSub(team, positions) {
   return sub.children.length ? sub : null;
 }
 
-function buildPlayer() {
-  if (document.querySelector(".cgm-hero")) return;
-  const badge = document.querySelector(".player-stat-badge");
-  const h1 = document.querySelector(".page-header h1") || document.querySelector("h1");
-  if (!badge || !h1) return;
-  const box = badge.closest(".flat-container");
-  if (!box) return;
+function buildFacts(pairs) {
+  const table = document.createElement("table");
+  table.className = "cgm-hero-facts";
+  const body = document.createElement("tbody");
+  table.append(body);
+  for (let at = 0; at < pairs.length; at += 2) {
+    const row = document.createElement("tr");
+    for (const pair of pairs.slice(at, at + 2)) {
+      row.append(Object.assign(document.createElement("th"), { scope: "row", textContent: pair.label }));
+      const value = document.createElement("td");
+      value.append(...pair.nodes);
+      row.append(value);
+    }
+    body.append(row);
+  }
+  return body.rows.length ? table : null;
+}
 
+function buildHero(h1, badge) {
   const { name, team, positions } = parseHeading(h1);
+  const { pairs, actions, status } = collectBadge(badge);
   const hero = document.createElement("section");
   hero.className = "cgm-hero";
   hero.setAttribute("aria-label", `${name} details`);
@@ -1736,26 +1763,188 @@ function buildPlayer() {
 
   h1.classList.add("cgm-hero-name");
   h1.textContent = name;
-  main.append(h1);
+  const title = document.createElement("div");
+  title.className = "cgm-hero-title";
+  title.append(h1);
+  if (status) title.append(statusPill(status));
+  main.append(title);
 
   const sub = buildSub(team, positions);
   if (sub) main.append(sub);
 
-  const { meta, actions } = collectFacts(badge);
-  if (meta.children.length) main.append(meta);
-  // The page repeats the watch button above the badge strip. Fold that copy
-  // into the hero actions so the page offers it once.
-  const topWatch = [...document.querySelectorAll(".container-fluid > input.btn")].find((input) => /watch/i.test(input.value || ""));
-  if (topWatch) actions.prepend(topWatch);
-  // The badge carries its own copy of the same submit. One watch button is
-  // enough; the extras are removed, never hidden, so no dead control remains.
-  const watches = actions.querySelectorAll('input[name="ToggleWatchButton"]');
-  watches.forEach((button, at) => { if (at > 0) button.remove(); });
-  if (actions.children.length || text(actions)) main.append(actions);
+  const facts = buildFacts(pairs);
+  if (facts) hero.append(facts);
+  return { hero, actions };
+}
 
-  box.before(hero);
+// One toolbox card holds the page actions plus the section toggles. The
+// sections the reader always wants are expanded; the custom-comment toggle
+// and its block go away entirely.
+const ALWAYS_OPEN = [/user comments/i, /tracked leagues/i, /recent news/i];
+
+function moveToggles(views) {
+  for (const header of [...document.querySelectorAll(".collapse-control-header")]) {
+    const toggle = header.querySelector('[data-toggle="collapse"]');
+    const label = text(toggle);
+    if (/custom comment/i.test(label)) {
+      header.closest("div[id]")?.remove();
+      const target = toggle?.getAttribute("data-target");
+      if (target) document.querySelector(target)?.remove();
+      continue;
+    }
+    if (!toggle) continue;
+    views.append(header);
+  }
+}
+
+function expandPinned() {
+  for (const header of [...document.querySelectorAll(".collapse-control-header")]) {
+    const toggle = header.querySelector('[data-toggle="collapse"]');
+    const target = toggle?.getAttribute("data-target");
+    if (!target || !ALWAYS_OPEN.some((pattern) => pattern.test(text(toggle)))) continue;
+    document.querySelector(target)?.classList.add("show");
+    toggle.setAttribute("aria-expanded", "true");
+  }
+}
+
+function buildToolbox(actions) {
+  const box = document.createElement("section");
+  box.className = "cgm-toolbox";
+  box.setAttribute("aria-label", "Player tools");
+  const doGroup = document.createElement("div");
+  doGroup.className = "cgm-tool-group";
+  doGroup.append(Object.assign(document.createElement("span"), { className: "cgm-tool-title", textContent: "Actions" }));
+  const buttons = document.createElement("div");
+  buttons.className = "cgm-tool-buttons";
+  const watches = actions.filter((node) => node.name === "ToggleWatchButton");
+  const rest = actions.filter((node) => node.name !== "ToggleWatchButton");
+  buttons.append(...watches.slice(0, 1), ...rest);
+  doGroup.append(buttons);
+  const topWatch = [...document.querySelectorAll('.container-fluid input[value*="Watch" i]')].find((input) => input.type === "submit" && !doGroup.contains(input));
+  if (topWatch && !buttons.querySelector('[name="ToggleWatchButton"]')) buttons.prepend(topWatch);
+  // The page ships the same Watch submit twice. One stays in the toolbox;
+  // every other copy goes, wherever it sits.
+  const kept = buttons.querySelector('[name="ToggleWatchButton"]');
+  if (kept) {
+    for (const duplicate of [...document.querySelectorAll('[name="ToggleWatchButton"]')]) {
+      if (duplicate !== kept) duplicate.remove();
+    }
+  }
+  if (buttons.children.length) box.append(doGroup);
+
+  const views = document.createElement("div");
+  views.className = "cgm-tool-group";
+  views.append(Object.assign(document.createElement("span"), { className: "cgm-tool-title", textContent: "Sections" }));
+  const chips = document.createElement("div");
+  chips.className = "cgm-tool-buttons";
+  views.append(chips);
+  moveToggles(chips);
+  expandPinned();
+  if (chips.children.length) box.append(views);
+  return box.children.length ? box : null;
+}
+
+// The schedule grid becomes a scrolling strip of day cards: date on top, the
+// opponent as a home/away pill, off days dimmed. The table stays in the DOM.
+function scheduleTable() {
+  const days = /^(mon|tue|wed|thu|fri|sat|sun)$/i;
+  return [...document.querySelectorAll("table.modern-stats-table")].find((table) => {
+    const first = [...(table.querySelector("thead tr") || table.querySelector("tr"))?.children || []].map((cell) => cell.textContent.trim());
+    return first.length > 7 && first.every((cell) => days.test(cell));
+  });
+}
+
+function buildSchedule() {
+  const table = scheduleTable();
+  if (!table || document.querySelector(".cgm-sched")) return null;
+  const rows = [...table.querySelectorAll("tr")].map((row) => [...row.children].map(text));
+  if (rows.length < 3) return null;
+  const strip = document.createElement("div");
+  strip.className = "cgm-sched";
+  strip.setAttribute("aria-label", "Schedule");
+  rows[0].forEach((day, at) => {
+    const card = document.createElement("div");
+    card.className = "cgm-day";
+    card.append(Object.assign(document.createElement("span"), { className: "cgm-day-dow", textContent: day }));
+    card.append(Object.assign(document.createElement("span"), { className: "cgm-day-date", textContent: rows[1][at] || "" }));
+    const game = (rows[2][at] || "").trim();
+    if (game) {
+      const away = game.startsWith("@");
+      card.append(Object.assign(document.createElement("span"), {
+        className: `cgm-day-game ${away ? "cgm-away" : "cgm-home"}`,
+        textContent: away ? game.slice(1) : game,
+      }));
+      if (away) card.title = `at ${game.slice(1)}`;
+    } else {
+      card.classList.add("cgm-off");
+    }
+    strip.append(card);
+  });
+  table.classList.add("cgm-sched-src");
+  table.before(strip);
+  return strip;
+}
+
+// The stat toggles read as one mess: a submit, bare checkboxes and labels in
+// a row. Group them with titles so each control's job is visible. Inputs move
+// with their labels, so the postbacks keep working.
+function toggleGroup(input) {
+  if (input.type === "submit") return "Defaults";
+  return /pergame|total|per36/i.test(input.id || input.name || "") ? "Stats" : "Display";
+}
+
+function wrapPair(input) {
+  const pair = document.createElement("label");
+  pair.className = "cgm-toggle";
+  const caption = input.type === "submit" ? input : input.nextElementSibling?.tagName === "LABEL" ? input.nextElementSibling : null;
+  input.before(pair);
+  pair.append(input);
+  if (caption && caption !== input) pair.append(caption);
+  if (input.type === "checkbox") pair.classList.toggle("cgm-on", input.checked);
+  return pair;
+}
+
+function buildStatToggles(anchor) {
+  const host = anchor?.parentElement;
+  if (!host || document.querySelector(".cgm-toggles")) return null;
+  const bar = document.createElement("div");
+  bar.className = "cgm-toggles";
+  const boxes = {};
+  for (const title of ["Defaults", "Stats", "Display"]) {
+    const wrap = document.createElement("div");
+    wrap.className = "cgm-toggle-group";
+    wrap.append(Object.assign(document.createElement("span"), { className: "cgm-toggle-title", textContent: title }));
+    boxes[title] = wrap;
+  }
+  for (const input of [...host.querySelectorAll("input")]) {
+    boxes[toggleGroup(input)].append(wrapPair(input));
+  }
+  for (const wrap of Object.values(boxes)) {
+    if (wrap.querySelector(".cgm-toggle")) bar.append(wrap);
+  }
+  if (!bar.children.length) return null;
+  host.before(bar);
+  if (!text(host)) host.remove();
+  return bar;
+}
+
+function buildPlayer() {
+  if (document.querySelector(".cgm-hero")) return;
+  const badge = document.querySelector(".player-stat-badge");
+  const h1 = document.querySelector(".page-header h1") || document.querySelector("h1");
+  if (!badge || !h1) return;
+  const box = badge.closest(".flat-container");
+
+  const { hero, actions } = buildHero(h1, badge);
+  const toolbox = buildToolbox(actions);
+  box?.before(hero);
+  if (toolbox) hero.after(toolbox);
   badge.remove();
-  if (!text(box)) box.remove();
+  if (box && !text(box)) box.remove();
+
+  buildSchedule();
+  const toggles = [...document.querySelectorAll(".ml-2")].find((el) => el.querySelector('input[type="checkbox"]'));
+  if (toggles) buildStatToggles(toggles);
 }
 return { buildPlayer };
 })();

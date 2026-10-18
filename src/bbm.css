@@ -582,17 +582,16 @@ html.cgm-bbm {
     gap: 6px 10px;
   }
 
-  /* Player details hero: one card with a big headshot, name, team and
-     positions, the labeled badge facts as a meta grid, and the page's own
-     actions. Names stay left aligned. */
+  /* Player details hero: photo left, name with status center, and the facts
+     as a two-sided table filling the right space. Names stay left aligned. */
   &.cgm-page-playerinfo .cgm-hero {
     align-items: start;
     background: var(--cgm-surface);
     border: 1px solid var(--cgm-line);
     border-radius: 14px;
     display: grid;
-    gap: 4px 20px;
-    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px 24px;
+    grid-template-columns: auto minmax(0, 1.05fr) minmax(0, 1fr);
     margin: 12px 12px 0;
     padding: 20px;
   }
@@ -614,6 +613,12 @@ html.cgm-bbm {
     justify-content: center;
   }
   &.cgm-page-playerinfo .cgm-hero-main { min-width: 0; }
+  &.cgm-page-playerinfo .cgm-hero-title {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+  }
   &.cgm-page-playerinfo h1.cgm-hero-name {
     font-size: 26px;
     font-weight: 800;
@@ -622,6 +627,15 @@ html.cgm-bbm {
     margin: 0;
     text-align: left;
     text-wrap: balance;
+  }
+  &.cgm-page-playerinfo .cgm-hero-status {
+    border-radius: 999px;
+    color: #fff;
+    font-size: 11.5px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    padding: 3px 10px;
+    white-space: nowrap;
   }
   &.cgm-page-playerinfo .cgm-hero-sub {
     align-items: center;
@@ -640,36 +654,179 @@ html.cgm-bbm {
     font-weight: 700;
     padding: 2px 8px;
   }
-  &.cgm-page-playerinfo dl.cgm-hero-meta {
-    display: grid;
-    gap: 10px 20px;
-    grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
-    margin: 14px 0 0;
-    padding: 0;
+  &.cgm-page-playerinfo table.cgm-hero-facts {
+    border-collapse: collapse;
+    margin: 0;
+    min-width: 0;
+    width: 100%;
   }
-  &.cgm-page-playerinfo .cgm-hero-fact { margin: 0; min-width: 0; }
-  &.cgm-page-playerinfo .cgm-hero-fact dt {
+  &.cgm-page-playerinfo .cgm-hero-facts th,
+  &.cgm-page-playerinfo .cgm-hero-facts td { border-top: 1px solid var(--cgm-line-soft); padding: 6px 0; }
+  &.cgm-page-playerinfo .cgm-hero-facts tr:first-child th,
+  &.cgm-page-playerinfo .cgm-hero-facts tr:first-child td { border-top: 0; }
+  &.cgm-page-playerinfo .cgm-hero-facts th {
     color: var(--cgm-faint);
     font-size: 10.5px;
     font-weight: 700;
     letter-spacing: 0.06em;
+    padding-right: 12px;
     text-transform: uppercase;
+    white-space: nowrap;
   }
-  &.cgm-page-playerinfo .cgm-hero-fact dd {
-    font-size: 14px;
+  &.cgm-page-playerinfo .cgm-hero-facts td {
+    font-size: 13.5px;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
-    margin: 2px 0 0;
+    text-align: right;
   }
-  &.cgm-page-playerinfo .cgm-hero-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 14px;
+  &.cgm-page-playerinfo .cgm-hero-facts th:nth-of-type(2) { padding-left: 20px; }
+  @media (max-width: 900px) {
+    &.cgm-page-playerinfo .cgm-hero { grid-template-columns: auto minmax(0, 1fr); }
+    &.cgm-page-playerinfo table.cgm-hero-facts { grid-column: 1 / -1; }
   }
   @media (max-width: 640px) {
     &.cgm-page-playerinfo .cgm-hero { grid-template-columns: minmax(0, 1fr); padding: 16px; }
     &.cgm-page-playerinfo .cgm-hero-head { height: 96px; width: 96px; }
+  }
+
+  /* One toolbox card for the page actions and the section toggles. */
+  &.cgm-page-playerinfo .cgm-toolbox {
+    background: var(--cgm-surface);
+    border: 1px solid var(--cgm-line);
+    border-radius: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 28px;
+    margin: 12px 12px 0;
+    padding: 12px 16px;
+  }
+  &.cgm-page-playerinfo .cgm-tool-group { min-width: 0; }
+  &.cgm-page-playerinfo .cgm-tool-title {
+    color: var(--cgm-faint);
+    display: block;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+  &.cgm-page-playerinfo .cgm-tool-buttons {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  &.cgm-page-playerinfo .cgm-tool-buttons .collapse-control-header { display: contents; }
+  &.cgm-page-playerinfo .cgm-tool-buttons input.btn { margin: 0; }
+
+  /* Schedule strip: day cards with the opponent as a home/away pill. */
+  &.cgm-page-playerinfo table.cgm-sched-src { display: none; }
+  &.cgm-page-playerinfo .cgm-sched {
+    display: flex;
+    gap: 6px;
+    margin: 12px 12px 0;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scroll-snap-type: x proximity;
+  }
+  &.cgm-page-playerinfo .cgm-day {
+    align-items: center;
+    background: var(--cgm-surface);
+    border: 1px solid var(--cgm-line-soft);
+    border-radius: 10px;
+    display: flex;
+    flex: 0 0 64px;
+    flex-direction: column;
+    gap: 2px;
+    max-width: 64px;
+    min-width: 0;
+    padding: 6px 4px;
+    scroll-snap-align: start;
+  }
+  &.cgm-page-playerinfo .cgm-day-dow {
+    color: var(--cgm-faint);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  &.cgm-page-playerinfo .cgm-day-date { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  &.cgm-page-playerinfo .cgm-day-game {
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 700;
+    max-width: 100%;
+    overflow: hidden;
+    padding: 2px 8px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  &.cgm-page-playerinfo .cgm-day-game.cgm-home {
+    background: rgba(22, 163, 74, 0.16);
+    color: var(--cgm-text);
+  }
+  &.cgm-page-playerinfo .cgm-day-game.cgm-away {
+    background: rgba(220, 38, 38, 0.12);
+    color: var(--cgm-text);
+  }
+  &.cgm-page-playerinfo .cgm-day.cgm-off { opacity: 0.45; }
+
+  /* Stat toggles grouped with titles instead of one bare row. */
+  &.cgm-page-playerinfo .cgm-toggles {
+    background: var(--cgm-surface);
+    border: 1px solid var(--cgm-line);
+    border-radius: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 24px;
+    margin: 12px 12px 0;
+    padding: 10px 16px;
+  }
+  &.cgm-page-playerinfo .cgm-toggle-group { min-width: 0; }
+  &.cgm-page-playerinfo .cgm-toggle-title {
+    color: var(--cgm-faint);
+    display: block;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+  &.cgm-page-playerinfo .cgm-toggle {
+    align-items: center;
+    background: var(--cgm-surface);
+    border: 1px solid var(--cgm-line);
+    border-radius: 999px;
+    color: var(--cgm-muted);
+    cursor: pointer;
+    display: inline-flex;
+    font-size: 12px;
+    font-weight: 600;
+    gap: 6px;
+    margin: 0 6px 6px 0;
+    padding: 4px 10px;
+  }
+  &.cgm-page-playerinfo .cgm-toggle:has(input:checked) {
+    background: var(--cgm-accent-soft);
+    border-color: var(--cgm-accent);
+    color: var(--cgm-text);
+  }
+  &.cgm-page-playerinfo .cgm-toggle input[type="checkbox"] { accent-color: var(--cgm-accent); margin: 0; }
+  &.cgm-page-playerinfo .cgm-toggle input[type="submit"] {
+    background: none;
+    border: 0;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    padding: 0;
+  }
+  &.cgm-page-playerinfo .cgm-toggle label:not([class]) {
+    background: none;
+    border: 0;
+    color: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    padding: 0;
   }
 
   /* Stat toggles ship hardcoded pale fills that stay bright in dark mode.
