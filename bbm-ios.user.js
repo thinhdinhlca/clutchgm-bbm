@@ -18,22 +18,23 @@
 (() => {
   "use strict";
   const BASE = "https://thinhdinhlca.github.io/clutchgm-bbm/";
-  const root = document.documentElement;
-  if (!root || root.classList.contains("cgm-bbm")) return;
-  root.classList.add("cgm-bbm");
+  const boot = () => {
+    const root = document.documentElement;
+    if (!root || root.classList.contains("cgm-bbm")) return;
+    root.classList.add("cgm-bbm");
 
-  const add = (node) => (document.head || root).append(node);
-  const link = document.createElement("link");
-  link.rel = "stylesheet";
-  link.href = BASE + "src/bbm.css";
-  add(link);
-
-  const load = () => {
-    const script = document.createElement("script");
-    script.type = "module";
-    script.src = BASE + "src/bbm-page.js";
-    add(script);
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = BASE + "src/bbm.css";
+    const script = Object.assign(document.createElement("script"), { type: "module", src: BASE + "src/bbm-page.js" });
+    // document-start can arrive before a head exists, so the first element that
+    // does carries the two tags; a stylesheet and a script apply from anywhere.
+    (document.head || root).append(link, script);
   };
-  if (document.head) load();
-  else document.addEventListener("DOMContentLoaded", load, { once: true });
+  if (document.documentElement) boot();
+  else new MutationObserver((_, observer) => {
+    if (!document.documentElement) return;
+    observer.disconnect();
+    boot();
+  }).observe(document, { childList: true, subtree: true });
 })();

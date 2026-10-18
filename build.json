@@ -227,7 +227,7 @@
  ],
  "userscript": {
   "path": "bbm-ios.user.js",
-  "sha256": "6faded5c755a9c7d5d123106adf7f5803f5b09fca3f5796862313a710c3280ee",
-  "bytes": 1605
+  "sha256": "c8f68f7659363e174b93659a0ae15b262d7e8cd1f6cb31daa66f5bf646279ccc",
+  "bytes": 1855
  }
 }
