@@ -582,6 +582,113 @@ html.cgm-bbm {
     gap: 6px 10px;
   }
 
+  /* Player details hero: one card with a big headshot, name, team and
+     positions, the labeled badge facts as a meta grid, and the page's own
+     actions. Names stay left aligned. */
+  &.cgm-page-playerinfo .cgm-hero {
+    align-items: start;
+    background: var(--cgm-surface);
+    border: 1px solid var(--cgm-line);
+    border-radius: 14px;
+    display: grid;
+    gap: 4px 20px;
+    grid-template-columns: auto minmax(0, 1fr);
+    margin: 12px 12px 0;
+    padding: 20px;
+  }
+  &.cgm-page-playerinfo .cgm-hero-photo { min-width: 0; }
+  &.cgm-page-playerinfo .cgm-hero-head {
+    background: var(--cgm-line-soft);
+    border-radius: 22px;
+    display: block;
+    height: 128px;
+    object-fit: cover;
+    width: 128px;
+  }
+  &.cgm-page-playerinfo span.cgm-hero-head.cgm-fallback {
+    align-items: center;
+    color: var(--cgm-muted);
+    display: inline-flex;
+    font-size: 34px;
+    font-weight: 800;
+    justify-content: center;
+  }
+  &.cgm-page-playerinfo .cgm-hero-main { min-width: 0; }
+  &.cgm-page-playerinfo h1.cgm-hero-name {
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    margin: 0;
+    text-align: left;
+    text-wrap: balance;
+  }
+  &.cgm-page-playerinfo .cgm-hero-sub {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  &.cgm-page-playerinfo .cgm-hero-logo { height: 20px; width: 20px; }
+  &.cgm-page-playerinfo .cgm-hero-team { font-size: 14px; font-weight: 700; }
+  &.cgm-page-playerinfo .cgm-hero-pos {
+    background: var(--cgm-accent-soft);
+    border-radius: 6px;
+    color: var(--cgm-text);
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 2px 8px;
+  }
+  &.cgm-page-playerinfo dl.cgm-hero-meta {
+    display: grid;
+    gap: 10px 20px;
+    grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+    margin: 14px 0 0;
+    padding: 0;
+  }
+  &.cgm-page-playerinfo .cgm-hero-fact { margin: 0; min-width: 0; }
+  &.cgm-page-playerinfo .cgm-hero-fact dt {
+    color: var(--cgm-faint);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  &.cgm-page-playerinfo .cgm-hero-fact dd {
+    font-size: 14px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    margin: 2px 0 0;
+  }
+  &.cgm-page-playerinfo .cgm-hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  @media (max-width: 640px) {
+    &.cgm-page-playerinfo .cgm-hero { grid-template-columns: minmax(0, 1fr); padding: 16px; }
+    &.cgm-page-playerinfo .cgm-hero-head { height: 96px; width: 96px; }
+  }
+
+  /* Stat toggles ship hardcoded pale fills that stay bright in dark mode.
+     Recolor them as theme chips; each label's own checkbox keeps the state. */
+  &.cgm-page-playerinfo label:not([class]) {
+    background: var(--cgm-surface);
+    border: 1px solid var(--cgm-line);
+    border-radius: 999px;
+    color: var(--cgm-muted);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 10px;
+  }
+  &.cgm-page-playerinfo label:not([class]):has(+ input:checked) {
+    background: var(--cgm-accent-soft);
+    border-color: var(--cgm-accent);
+    color: var(--cgm-text);
+  }
+
   /* Player details: the site caps its two content columns with an inline
      max-width of 275px and 800px, which leaves a quarter of a 1418px page
      empty. Lift the caps so the tables use the width that is already there. */
