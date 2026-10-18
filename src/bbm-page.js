@@ -1691,17 +1691,33 @@ function statusPill(value) {
   return pill;
 }
 
+// The depth link may sit bare in the item or wrapped in a value span. Only a
+// badge item holding nothing but that link folds into the team word; anything
+// else stays a regular action.
 // Labeled badge items split three ways: the status fact joins the name, the
 // positions fact is already shown as pills, and the rest become table pairs.
-// Unlabeled items (links, the watch button) are page actions.
+// Unlabeled items (links, the watch button) are page actions, except a lone
+// depth link: it folds into the team word in the sub line.
+function depthAnchor(item, rest) {
+  const anchor = rest.reduce((found, node) => found || (node.tagName === "A" ? node : node.querySelector?.("a") || null), null);
+  if (!anchor || !/depth chart/i.test(text(anchor))) return null;
+  if (text(item).trim() !== text(anchor).trim()) return null;
+  return anchor;
+}
 function collectBadge(badge) {
   const pairs = [];
   const actions = [];
   let status = null;
+  let depthHref = null;
   for (const item of [...badge.querySelectorAll(".player-stat-badge-item")]) {
     const label = text(item.querySelector(".player-stat-badge-label"));
     const rest = [...item.childNodes].filter((node) => !node.classList?.contains("player-stat-badge-label"));
     if (!label) {
+      const depth = depthAnchor(item, rest);
+      if (depth) {
+        depthHref ||= depth.getAttribute("href");
+        continue;
+      }
       actions.push(...rest);
       continue;
     }
@@ -1712,15 +1728,22 @@ function collectBadge(badge) {
     if (/positions? played/i.test(label)) continue;
     pairs.push({ label, nodes: rest });
   }
-  return { pairs, actions, status };
+  return { pairs, actions, status, depthHref };
 }
 
-function buildSub(team, positions) {
+function buildSub(team, positions, depthHref) {
   const sub = document.createElement("div");
   sub.className = "cgm-hero-sub";
   const logo = team ? teamLogo(team, "cgm-hero-logo") : null;
   if (logo) sub.append(logo);
-  if (team) sub.append(Object.assign(document.createElement("span"), { className: "cgm-hero-team", textContent: team }));
+  if (team) {
+    const word = Object.assign(document.createElement(depthHref ? "a" : "span"), { className: "cgm-hero-team", textContent: team });
+    if (depthHref) {
+      word.href = depthHref;
+      word.title = `${team} depth chart`;
+    }
+    sub.append(word);
+  }
   for (const position of positions) {
     sub.append(Object.assign(document.createElement("span"), { className: "cgm-hero-pos", textContent: position }));
   }
@@ -1747,7 +1770,7 @@ function buildFacts(pairs) {
 
 function buildHero(h1, badge) {
   const { name, team, positions } = parseHeading(h1);
-  const { pairs, actions, status } = collectBadge(badge);
+  const { pairs, actions, status, depthHref } = collectBadge(badge);
   const hero = document.createElement("section");
   hero.className = "cgm-hero";
   hero.setAttribute("aria-label", `${name} details`);
@@ -1769,7 +1792,7 @@ function buildHero(h1, badge) {
   if (status) title.append(statusPill(status));
   main.append(title);
 
-  const sub = buildSub(team, positions);
+  const sub = buildSub(team, positions, depthHref);
   if (sub) main.append(sub);
 
   const facts = buildFacts(pairs);
@@ -1777,12 +1800,21 @@ function buildHero(h1, badge) {
   return { hero, actions };
 }
 
-// One toolbox card holds the page actions plus the section toggles. The
-// sections the reader always wants are expanded; the custom-comment toggle
-// and its block go away entirely.
+// One toolbox card holds the page actions plus the section toggles. Each
+// section toggle joins its lock button in one pill instead of two floating
+// chips. The sections the reader always wants are expanded; the custom-comment
+// toggle and its block go away entirely.
 const ALWAYS_OPEN = [/user comments/i, /tracked leagues/i, /recent news/i];
 
-function moveToggles(views) {
+function sectionPill(header, chips) {
+  const pill = document.createElement("span");
+  pill.className = "cgm-section";
+  pill.append(...header.childNodes);
+  chips.append(pill);
+  header.remove();
+}
+
+function moveToggles(chips) {
   for (const header of [...document.querySelectorAll(".collapse-control-header")]) {
     const toggle = header.querySelector('[data-toggle="collapse"]');
     const label = text(toggle);
@@ -1793,17 +1825,32 @@ function moveToggles(views) {
       continue;
     }
     if (!toggle) continue;
-    views.append(header);
+    sectionPill(header, chips);
   }
 }
 
-function expandPinned() {
-  for (const header of [...document.querySelectorAll(".collapse-control-header")]) {
-    const toggle = header.querySelector('[data-toggle="collapse"]');
-    const target = toggle?.getAttribute("data-target");
+function expandPinned(chips) {
+  for (const toggle of [...chips.querySelectorAll('[data-toggle="collapse"]')]) {
+    const target = toggle.getAttribute("data-target");
     if (!target || !ALWAYS_OPEN.some((pattern) => pattern.test(text(toggle)))) continue;
     document.querySelector(target)?.classList.add("show");
     toggle.setAttribute("aria-expanded", "true");
+  }
+}
+
+// The Watch button sits with the section toggles, right before Edit Display,
+// instead of floating in its own group. The page ships the submit twice; the
+// toolbox keeps one and every other copy goes.
+function placeWatch(buttons, chips) {
+  const watch = buttons.querySelector('[name="ToggleWatchButton"]');
+  if (!watch) return;
+  const editHeader = [...chips.children].find((pill) => /edit display/i.test(text(pill)));
+  if (editHeader) chips.insertBefore(watch, editHeader);
+  else chips.append(watch);
+  const kept = chips.querySelector('[name="ToggleWatchButton"]');
+  if (!kept) return;
+  for (const duplicate of [...document.querySelectorAll('[name="ToggleWatchButton"]')]) {
+    if (duplicate !== kept) duplicate.remove();
   }
 }
 
@@ -1816,20 +1863,8 @@ function buildToolbox(actions) {
   doGroup.append(Object.assign(document.createElement("span"), { className: "cgm-tool-title", textContent: "Actions" }));
   const buttons = document.createElement("div");
   buttons.className = "cgm-tool-buttons";
-  const watches = actions.filter((node) => node.name === "ToggleWatchButton");
-  const rest = actions.filter((node) => node.name !== "ToggleWatchButton");
-  buttons.append(...watches.slice(0, 1), ...rest);
+  buttons.append(...actions);
   doGroup.append(buttons);
-  const topWatch = [...document.querySelectorAll('.container-fluid input[value*="Watch" i]')].find((input) => input.type === "submit" && !doGroup.contains(input));
-  if (topWatch && !buttons.querySelector('[name="ToggleWatchButton"]')) buttons.prepend(topWatch);
-  // The page ships the same Watch submit twice. One stays in the toolbox;
-  // every other copy goes, wherever it sits.
-  const kept = buttons.querySelector('[name="ToggleWatchButton"]');
-  if (kept) {
-    for (const duplicate of [...document.querySelectorAll('[name="ToggleWatchButton"]')]) {
-      if (duplicate !== kept) duplicate.remove();
-    }
-  }
   if (buttons.children.length) box.append(doGroup);
 
   const views = document.createElement("div");
@@ -1839,7 +1874,8 @@ function buildToolbox(actions) {
   chips.className = "cgm-tool-buttons";
   views.append(chips);
   moveToggles(chips);
-  expandPinned();
+  expandPinned(chips);
+  placeWatch(buttons, chips);
   if (chips.children.length) box.append(views);
   return box.children.length ? box : null;
 }
@@ -1854,32 +1890,50 @@ function scheduleTable() {
   });
 }
 
+function dayCard(dow, date, game) {
+  const card = document.createElement("div");
+  card.className = "cgm-day";
+  card.append(Object.assign(document.createElement("span"), { className: "cgm-day-dow", textContent: dow }));
+  card.append(Object.assign(document.createElement("span"), { className: "cgm-day-date", textContent: date }));
+  const match = (game || "").trim();
+  if (match) {
+    const away = match.startsWith("@");
+    card.append(Object.assign(document.createElement("span"), {
+      className: `cgm-day-game ${away ? "cgm-away" : "cgm-home"}`,
+      textContent: away ? match.slice(1) : match,
+    }));
+    if (away) card.title = `at ${match.slice(1)}`;
+  } else {
+    card.classList.add("cgm-off");
+  }
+  return card;
+}
+
 function buildSchedule() {
   const table = scheduleTable();
   if (!table || document.querySelector(".cgm-sched")) return null;
   const rows = [...table.querySelectorAll("tr")].map((row) => [...row.children].map(text));
-  if (rows.length < 3) return null;
+  if (rows.length < 3 || rows[0].length < 2) return null;
   const strip = document.createElement("div");
   strip.className = "cgm-sched";
-  strip.setAttribute("aria-label", "Schedule");
-  rows[0].forEach((day, at) => {
-    const card = document.createElement("div");
-    card.className = "cgm-day";
-    card.append(Object.assign(document.createElement("span"), { className: "cgm-day-dow", textContent: day }));
-    card.append(Object.assign(document.createElement("span"), { className: "cgm-day-date", textContent: rows[1][at] || "" }));
-    const game = (rows[2][at] || "").trim();
-    if (game) {
-      const away = game.startsWith("@");
-      card.append(Object.assign(document.createElement("span"), {
-        className: `cgm-day-game ${away ? "cgm-away" : "cgm-home"}`,
-        textContent: away ? game.slice(1) : game,
-      }));
-      if (away) card.title = `at ${game.slice(1)}`;
-    } else {
-      card.classList.add("cgm-off");
-    }
-    strip.append(card);
-  });
+  strip.setAttribute("aria-label", "Schedule by week");
+  for (let at = 0, week = 1; at < rows[0].length; at += 7, week += 1) {
+    const days = document.createElement("div");
+    days.className = "cgm-week";
+    const first = rows[1][at] || "";
+    const last = rows[1][Math.min(at + 6, rows[1].length - 1)] || "";
+    days.append(Object.assign(document.createElement("span"), {
+      className: "cgm-week-title",
+      textContent: first && last && first !== last ? `Week ${week} · ${first}–${last}` : `Week ${week}`,
+    }));
+    const grid = document.createElement("div");
+    grid.className = "cgm-week-days";
+    rows[0].slice(at, at + 7).forEach((day, off) => {
+      grid.append(dayCard(day, rows[1][at + off] || "", rows[2][at + off] || ""));
+    });
+    days.append(grid);
+    strip.append(days);
+  }
   table.classList.add("cgm-sched-src");
   table.before(strip);
   return strip;

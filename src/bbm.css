@@ -646,6 +646,8 @@ html.cgm-bbm {
   }
   &.cgm-page-playerinfo .cgm-hero-logo { height: 20px; width: 20px; }
   &.cgm-page-playerinfo .cgm-hero-team { font-size: 14px; font-weight: 700; }
+  &.cgm-page-playerinfo a.cgm-hero-team { color: inherit; text-decoration: none; }
+  &.cgm-page-playerinfo a.cgm-hero-team:hover { color: var(--cgm-accent); text-decoration: underline; }
   &.cgm-page-playerinfo .cgm-hero-pos {
     background: var(--cgm-accent-soft);
     border-radius: 6px;
@@ -719,15 +721,49 @@ html.cgm-bbm {
   &.cgm-page-playerinfo .cgm-tool-buttons .collapse-control-header { display: contents; }
   &.cgm-page-playerinfo .cgm-tool-buttons input.btn { margin: 0; }
 
-  /* Schedule strip: day cards with the opponent as a home/away pill. */
+  /* Joined section pills: the toggle and its lock read as one control. */
+  &.cgm-page-playerinfo .cgm-tool-buttons .cgm-section {
+    align-items: stretch;
+    background: var(--cgm-surface);
+    border: 1px solid var(--cgm-line);
+    border-radius: 8px;
+    display: inline-flex;
+    overflow: hidden;
+  }
+  &.cgm-page-playerinfo .cgm-section > button,
+  &.cgm-page-playerinfo .cgm-section > span > button,
+  &.cgm-page-playerinfo .cgm-section > span > span > button,
+  &.cgm-page-playerinfo .cgm-section > span > span > span > button {
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+  &.cgm-page-playerinfo .cgm-section > button + *,
+  &.cgm-page-playerinfo .cgm-section > span + span { border-left: 1px solid var(--cgm-line-soft); }
+  &.cgm-page-playerinfo .cgm-section input.btn { margin: 0; }
+
+  /* Schedule by week: week blocks stack vertically, days share one row. */
   &.cgm-page-playerinfo table.cgm-sched-src { display: none; }
   &.cgm-page-playerinfo .cgm-sched {
     display: flex;
-    gap: 6px;
+    flex-direction: column;
+    gap: 10px;
     margin: 12px 12px 0;
-    overflow-x: auto;
-    padding-bottom: 4px;
-    scroll-snap-type: x proximity;
+  }
+  &.cgm-page-playerinfo .cgm-week-title {
+    color: var(--cgm-faint);
+    display: block;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+  }
+  &.cgm-page-playerinfo .cgm-week-days {
+    display: grid;
+    gap: 6px;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
   }
   &.cgm-page-playerinfo .cgm-day {
     align-items: center;
@@ -735,13 +771,10 @@ html.cgm-bbm {
     border: 1px solid var(--cgm-line-soft);
     border-radius: 10px;
     display: flex;
-    flex: 0 0 64px;
     flex-direction: column;
     gap: 2px;
-    max-width: 64px;
     min-width: 0;
     padding: 6px 4px;
-    scroll-snap-align: start;
   }
   &.cgm-page-playerinfo .cgm-day-dow {
     color: var(--cgm-faint);
@@ -794,9 +827,9 @@ html.cgm-bbm {
   }
   &.cgm-page-playerinfo .cgm-toggle {
     align-items: center;
-    background: var(--cgm-surface);
-    border: 1px solid var(--cgm-line);
-    border-radius: 999px;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 4px;
     color: var(--cgm-muted);
     cursor: pointer;
     display: inline-flex;
@@ -804,11 +837,12 @@ html.cgm-bbm {
     font-weight: 600;
     gap: 6px;
     margin: 0 6px 6px 0;
-    padding: 4px 10px;
+    padding: 4px 8px;
   }
+  &.cgm-page-playerinfo .cgm-toggle:hover { border-color: var(--cgm-line-soft); }
   &.cgm-page-playerinfo .cgm-toggle:has(input:checked) {
     background: var(--cgm-accent-soft);
-    border-color: var(--cgm-accent);
+    border-color: transparent;
     color: var(--cgm-text);
   }
   &.cgm-page-playerinfo .cgm-toggle input[type="checkbox"] { accent-color: var(--cgm-accent); margin: 0; }
