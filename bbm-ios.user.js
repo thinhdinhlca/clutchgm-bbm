@@ -7,14 +7,18 @@
 // @match        *://basketballmonster.com/*
 // @match        *://*.basketballmonster.com/*
 // @run-at       document-start
-// @grant        none
+// @grant        GM_xmlhttpRequest
+// @connect      publish.x.com
+// @connect      api.allorigins.win
+// @connect      api.codetabs.com
 // @downloadURL  https://thinhdinhlca.github.io/clutchgm-bbm/bbm-ios.user.js
 // @updateURL    https://thinhdinhlca.github.io/clutchgm-bbm/bbm-ios.user.js
 // ==/UserScript==
-// Loads the bundle from https://thinhdinhlca.github.io/clutchgm-bbm/. Nothing is fetched from anywhere else except
-// player headshots on a.espncdn.com. The cgm-bbm class is the boot marker the
-// extension also uses, so a second injection stands down instead of doubling
-// the page furniture.
+// Loads the bundle from https://thinhdinhlca.github.io/clutchgm-bbm/. Besides player headshots on a.espncdn.com, a
+// story that links a tweet fetches that tweet's text through X's oEmbed
+// endpoint (directly when the manager grants it, else through a CORS proxy).
+// The cgm-bbm class is the boot marker the extension also uses, so a second
+// injection stands down instead of doubling the page furniture.
 (() => {
   "use strict";
   const BASE = "https://thinhdinhlca.github.io/clutchgm-bbm/";

@@ -3,8 +3,8 @@
  "entry": "src/bbm-page.js",
  "bundle": {
   "path": "src/bbm-page.js",
-  "sha256": "711c5ce19745945a9599c670332bb89b043640bf464d7601dcec5b29486d6c4a",
-  "bytes": 114979,
+  "sha256": "44c26da10da8789edd48bebf81932cb588afddb1af6ee604c321054b46c1c91b",
+  "bytes": 117225,
   "modules": [
    {
     "path": "src/bbm-appbar.js",
@@ -48,7 +48,7 @@
    },
    {
     "path": "src/bbm-home.js",
-    "sha256": "fa915eabe4c10d07c45361abed7dc9ff39f1a7d1369859190b43f2f17bc86ed8"
+    "sha256": "f134bad4bcc6393715b15fac8922a52934c5f8858d16168c5819544913d066e5"
    },
    {
     "path": "src/bbm-espn.js",
@@ -239,7 +239,7 @@
  ],
  "userscript": {
   "path": "bbm-ios.user.js",
-  "sha256": "c8f68f7659363e174b93659a0ae15b262d7e8cd1f6cb31daa66f5bf646279ccc",
-  "bytes": 1855
+  "sha256": "d3cd4fc4cc4ca26a4f6dddaedad3fbb5baf57962e02bee04fba87c6836bcbca9",
+  "bytes": 2082
  }
 }

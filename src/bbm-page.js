@@ -992,7 +992,7 @@ return { mineIDs };
 })();
 
 // ---- src/bbm-home.js
-const { elapsedBucket, wordLabel, buildBylines, commentBodies, tweetFromOEmbed, buildNews, buildGames, buildHome } = (() => {
+const { elapsedBucket, wordLabel, buildBylines, commentBodies, tweetFromOEmbed, tweetEndpoints, buildNews, buildGames, buildHome } = (() => {
 // The home page ships its widgets as a row of equal cards that each show
 // everything at once. This rebuilds it as three tabs: Player News (the newest
 // story leads, the rest are briefs under elapsed-time headings, with Today's
@@ -1169,9 +1169,85 @@ function tweetFromOEmbed(json) {
 const TWEET_KEY = "cgmBbmTweets";
 const TWEET_TTL = 60 * 60 * 1000;
 
+// oEmbed answers 200 without CORS headers and the bundle runs under page
+// CORS, so the fetch goes through a small ordered chain: the userscript
+// manager's own request API when granted (no CORS involved), then plain fetch
+// first in case CORS ever opens, then public CORS proxies. Pure list so tests
+// can cover the order without a DOM.
+function tweetEndpoints(href) {
+  const oembed = `https://publish.x.com/oembed?url=${encodeURIComponent(href)}&omit_script=true`;
+  return [
+    { kind: "direct", url: oembed },
+    { kind: "allorigins", url: "https://api.allorigins.win/get?url=" + encodeURIComponent(oembed) },
+    { kind: "raw", url: "https://api.allorigins.win/raw?url=" + encodeURIComponent(oembed) },
+    { kind: "codetabs", url: "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(oembed) },
+  ];
+}
+
+// The classic userscript request API bypasses page CORS entirely; it exists
+// only when the manager grants it, so every other context falls through.
+function gmFetchText(url) {
+  return new Promise((resolve, reject) => {
+    try {
+      GM_xmlhttpRequest({
+        method: "GET", url, timeout: 20000,
+        onload: (r) => (r.status >= 200 && r.status < 300 ? resolve(r.responseText) : reject(new Error(`oEmbed ${r.status}`))),
+        onerror: () => reject(new Error("oEmbed request failed")),
+        ontimeout: () => reject(new Error("oEmbed timed out")),
+      });
+    } catch (e) { reject(e); }
+  });
+}
+
+const withTimeout = (promise, ms) => Promise.race([
+  promise,
+  new Promise((_, reject) => setTimeout(() => reject(new Error("oEmbed timed out")), ms)),
+]);
+
+async function fetchTweetJson(href) {
+  const endpoints = tweetEndpoints(href);
+  if (typeof GM_xmlhttpRequest === "function") {
+    try {
+      const tweet = tweetFromOEmbed(await withTimeout(gmFetchText(endpoints[0].url), 25000));
+      if (tweet) return tweet;
+    } catch { /* fall through to the fetch chain */ }
+  }
+  for (const { kind, url } of endpoints) {
+    try {
+      const response = await withTimeout(fetch(url), 25000);
+      if (!response.ok) continue;
+      const body = kind === "direct" || kind === "raw" ? await response.text() : (await response.json()).contents;
+      const tweet = tweetFromOEmbed(body);
+      if (tweet) return tweet;
+    } catch { /* next endpoint */ }
+  }
+  return null;
+}
+
 // A story that links a tweet shows the tweet under the note. Only shown cards
 // fetch, each URL once per page load, and a failed fetch keeps the source
 // link standing instead of failing the page.
+async function loadTweetEntry(href, cache) {
+  const fresh = (at) => Date.now() - at < TWEET_TTL;
+  let entry = cache[href];
+  if (!entry || !fresh(entry.at)) {
+    const tweet = await fetchTweetJson(href);
+    if (!tweet) return null;
+    entry = { ...tweet, at: Date.now() };
+    cache[href] = entry;
+    try { sessionStorage.setItem(TWEET_KEY, JSON.stringify(cache)); } catch { /* storage blocked */ }
+  }
+  return entry;
+}
+
+function renderTweetBox(card, entry) {
+  const box = div("cgm-tweet", div("cgm-tweet-via", `Via ${entry.author}${entry.handle ? ` (@${entry.handle})` : ""}`));
+  box.append(entry.text);
+  const row = card.querySelector(".news-card-test-body-row");
+  if (row) row.after(box);
+  else card.append(box);
+}
+
 async function fillTweets(cards) {
   const jobs = cards.filter((card) => {
     if (card.dataset.cgmTweet) return false;
@@ -1182,26 +1258,12 @@ async function fillTweets(cards) {
   if (!jobs.length) return;
   let cache = {};
   try { cache = JSON.parse(sessionStorage.getItem(TWEET_KEY)) || {}; } catch { /* storage blocked */ }
-  const fresh = (at) => Date.now() - at < TWEET_TTL;
   const one = async (card) => {
     const href = card.querySelector(".news-card-test-source")?.getAttribute("href") || "";
     try {
-      let entry = cache[href];
-      if (!entry || !fresh(entry.at)) {
-        const endpoint = "https://api.allorigins.win/get?url=" + encodeURIComponent(`https://publish.twitter.com/oembed?url=${encodeURIComponent(href)}&omit_script=true`);
-        const response = await fetch(endpoint);
-        if (!response.ok) return;
-        const tweet = tweetFromOEmbed((await response.json()).contents);
-        if (!tweet) return;
-        entry = { ...tweet, at: Date.now() };
-        cache[href] = entry;
-        try { sessionStorage.setItem(TWEET_KEY, JSON.stringify(cache)); } catch { /* storage blocked */ }
-      }
-      const box = div("cgm-tweet", div("cgm-tweet-via", `Via ${entry.author}${entry.handle ? ` (@${entry.handle})` : ""}`));
-      box.append(entry.text);
-      const row = card.querySelector(".news-card-test-body-row");
-      if (row) row.after(box);
-      else card.append(box);
+      const entry = await loadTweetEntry(href, cache);
+      if (!entry) return;
+      renderTweetBox(card, entry);
     } catch { /* the source link stands; a failed tweet is not a page error */ }
   };
   await Promise.allSettled(jobs.map(one));
@@ -1446,7 +1508,7 @@ function buildHome() {
 
   pick(readTab());
 }
-return { elapsedBucket, wordLabel, buildBylines, commentBodies, tweetFromOEmbed, buildNews, buildGames, buildHome };
+return { elapsedBucket, wordLabel, buildBylines, commentBodies, tweetFromOEmbed, tweetEndpoints, buildNews, buildGames, buildHome };
 })();
 
 // ---- src/bbm-espn.js
