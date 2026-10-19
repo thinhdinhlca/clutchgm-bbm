@@ -279,7 +279,6 @@ html.cgm-bbm {
     .cgm-news .cgm-stories { column-gap: 64px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); row-gap: 24px; }
     .cgm-news .cgm-dayhead { grid-column: 1 / -1; }
   }
-  .cgm-games { margin-top: 26px; max-width: 880px; }
   /* ---------- Live Matches: one compact card per league ----------
      The score line names its leader; each category chip keeps its full
      "ours–theirs" count in its tooltip. Dots carry the result colour so the
