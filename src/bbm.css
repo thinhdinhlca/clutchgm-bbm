@@ -266,8 +266,10 @@ html.cgm-bbm {
   }
   .cgm-home .card-based { background: none; border: 0; border-radius: 0; box-shadow: none; margin: 0; max-height: none; overflow: visible; padding: 0; }
   .cgm-tabs { margin: 0 0 14px; }
-  .cgm-tabs .cgm-seg { border-radius: 10px; display: inline-flex; gap: 3px; padding: 3px; }
-  .cgm-tabs .cgm-seg-btn { font-size: 14px; padding: 8px 22px; }
+  /* Tabs read as an editorial rule, not a control box: labels on a hairline,
+     the active one underlined in accent. */
+  .cgm-tabs .cgm-seg { background: none; border-bottom: 1px solid var(--cgm-line); border-radius: 0; display: inline-flex; gap: 4px; padding: 0; }
+  .cgm-tabs .cgm-seg-btn { border: 0; border-bottom: 2px solid transparent; border-radius: 0; font-size: 14px; margin-bottom: -1px; padding: 10px 22px; &[aria-pressed="true"] { background: none; border-bottom-color: var(--cgm-accent); box-shadow: none; } }
   .cgm-panel[hidden] { display: none !important; }
   /* The news column stays readable at full width: the note lines stop before
      they stretch across a wide window. */
@@ -280,8 +282,9 @@ html.cgm-bbm {
   .cgm-live-bar { align-items: center; display: flex; gap: 12px; margin: 0 0 12px; }
   .cgm-live-stamp { color: var(--cgm-faint); font-size: 12px; }
   .cgm-live-bar .cgm-show-all { margin-top: 0; }
-  .cgm-live-list { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
-  .cgm-match { background: var(--cgm-surface); border: 1px solid var(--cgm-line); border-radius: 10px; padding: 12px 14px; }
+  .cgm-live-list { display: grid; gap: 0; max-width: 880px; }
+  .cgm-match { background: none; border: 0; border-radius: 0; padding: 12px 2px; }
+  .cgm-match + .cgm-match { border-top: 1px solid var(--cgm-line-soft); }
   .cgm-match-head { align-items: baseline; display: flex; gap: 10px; justify-content: space-between; margin-bottom: 8px; }
   .cgm-match-league { color: var(--cgm-faint); font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
   .cgm-match-head a { font-size: 12px; white-space: nowrap; }
@@ -379,7 +382,13 @@ html.cgm-bbm {
   .cgm-dayhead { color: var(--cgm-faint); font-size: 10.5px; font-weight: 800; letter-spacing: 0.08em; margin: 16px 0 4px; text-transform: uppercase; }
   .cgm-stories > .cgm-dayhead:first-child { margin-top: 2px; }
   /* player news: a byline row (headshot plus team logo), the name line, the
-     full note, and the linked tweet when the story has one */
+     full note, and the linked tweet when the story has one. Stories are flat
+     rows on the page, never cards: no fills, no borders, no radius. */
+  .cgm-story {
+    background: none !important;
+    border: 0;
+    border-radius: 0;
+  }
   .news-card:has(.news-card-test-header) {
     box-shadow: none !important;
     display: grid;
@@ -397,17 +406,13 @@ html.cgm-bbm {
   .cgm-byline .cgm-head { height: 48px; width: 48px; }
   .cgm-byline span.cgm-head.cgm-fallback { font-size: 14px; }
   .cgm-byline .cgm-logo { height: 38px; width: auto; }
-  .cgm-story.cgm-brief { cursor: pointer; padding: 12px 2px 13px; }
-  /* A brief keeps the site's own status tint, so the hover has to outrank that
-     inline colour to be seen at all. */
-  .cgm-story.cgm-brief:hover { background: color-mix(in srgb, var(--cgm-text) 7%, transparent) !important; }
-  /* The lead is the one story of the filter with room for a larger byline and
-     a tinted card; the grid is shared so every card reads the same way. */
+  .cgm-story.cgm-brief { cursor: pointer; padding: 14px 2px; }
+  /* A brief has no surface of its own, so the hover is a faint wash. */
+  .cgm-story.cgm-brief:hover { background: color-mix(in srgb, var(--cgm-text) 5%, transparent) !important; }
+  /* The lead is the one story of the filter with a larger byline; the grid is
+     shared so every card reads the same way, with air instead of a box. */
   .cgm-story.cgm-lead {
-    background: color-mix(in srgb, var(--cgm-status, var(--cgm-line)) 10%, var(--cgm-surface)) !important;
-    border: 1px solid color-mix(in srgb, var(--cgm-status, var(--cgm-line)) 26%, var(--cgm-line));
-    border-radius: 12px;
-    padding: 16px 18px 18px;
+    padding: 14px 2px 18px;
   }
   .cgm-story.cgm-lead .cgm-byline .cgm-head { height: 72px; width: 72px; }
   .cgm-story.cgm-lead .cgm-byline span.cgm-head.cgm-fallback { font-size: 20px; }
@@ -480,9 +485,8 @@ html.cgm-bbm {
   }
   /* comments */
   .cgm-home .comment-card-btn { background: none; border: 0; color: var(--cgm-faint); font-size: 11.5px; padding: 2px 0; }
-  /* today's games: one folded row per game */
-  .daily-status-updates { font-size: 12.5px; }
-  .cgm-home .cgm-games .daily-status-updates { background: var(--cgm-surface); border: 1px solid var(--cgm-line); border-radius: 10px; padding: 12px 14px; }
+  /* today's games: one folded row per game, flat like everything else */
+  .daily-status-updates { background: none; border: 0; border-radius: 0; font-size: 12.5px; padding: 4px 0; }
   .cgm-game {
     border-top: 1px solid var(--cgm-line-soft);
     > summary {
@@ -566,14 +570,16 @@ html.cgm-bbm {
 
   /* ---------- Cards: tinted fills with normal text, no coloured rails ---------- */
   .comment-card {
-    background: color-mix(in srgb, var(--cgm-tone, var(--cgm-line)) 14%, var(--cgm-surface)) !important;
-    border: 1px solid var(--cgm-line) !important;
-    border-radius: 8px;
+    background: none !important;
+    border: 0 !important;
+    border-bottom: 1px solid var(--cgm-line-soft);
+    border-radius: 0;
     box-shadow: none !important;
     color: var(--cgm-text);
-    margin: 0 0 8px;
-    padding: 10px 12px;
+    margin: 0;
+    padding: 10px 2px;
   }
+  .comment-card:last-child { border-bottom: 0; }
   .comment-card-btn { background: none; border: 0; color: var(--cgm-muted); font-size: 11.5px; padding: 2px 0; }
   /* Home comments are teasers until their bodies arrive: the home server never
      sends them, so each empty card folds to one row — player, who commented,
@@ -1221,7 +1227,7 @@ html.cgm-bbm {
     .cgm-newshead { align-items: flex-start; }
     .cgm-newshead h3 { font-size: 16px; }
     .cgm-story.cgm-brief .news-card-test-status-corner { font-size: 9.5px; padding: 1px 6px; }
-    .cgm-story.cgm-lead { padding: 13px 14px 15px; }
+    .cgm-story.cgm-lead { padding: 12px 2px 14px; }
     .cgm-story.cgm-lead .display-player-name { font-size: 21px !important; }
     .cgm-story.cgm-lead .cgm-head { height: 52px; width: 52px; }
     .cgm-story.cgm-lead > .news-card-test-body-row { padding-left: 0; }

@@ -2904,14 +2904,6 @@ function run() {
   if (page === "positiontiers") step("tiers", buildTiers);
   if (page === "playerinfo") step("player", buildPlayer);
   step("notices", foldNotices);
-  step("tones", () => {
-    // Comment cards carry their age shade as an inline border colour. Keep the
-    // colour as a custom property so the card can tint its fill instead.
-    for (const card of document.querySelectorAll(".comment-card[style*='border-color']")) {
-      card.style.setProperty("--cgm-tone", card.style.borderColor);
-      card.style.borderColor = "";
-    }
-  });
   step("status", () => {
     // News cards take their tint from the status badge colour.
     for (const badge of document.querySelectorAll(".news-card-test-status-corner")) {
