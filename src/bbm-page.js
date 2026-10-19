@@ -2359,12 +2359,21 @@ function tagStories(cards, bucket = elapsedBucket) {
     // The priority word becomes a coloured dot, so it keeps its word as a tooltip.
     const level = card.querySelector(".news-card-test-level");
     if (level) level.title = level.textContent.trim();
-    // The status pill rides right after the name instead of its own column.
+    // The status pill and the story's own meta ride on the name's line: the
+    // pill after the name, the source link and the age at the far end of it.
+    // The site floats the meta over the card's corner, and the row it left
+    // behind was a band of air above every name.
     const name = card.querySelector(".display-player-name");
     const pill = card.querySelector(".news-card-test-corner-group");
     if (name && pill && !pill.dataset.cgmMoved) {
       pill.dataset.cgmMoved = "1";
       name.after(pill);
+    }
+    const player = card.querySelector(".display-player");
+    const header = card.querySelector(".news-card-test-header");
+    if (player && header && !header.dataset.cgmMoved) {
+      header.dataset.cgmMoved = "1";
+      player.append(header);
     }
     card.addEventListener("click", (event) => {
       if (!event.target.closest("a, button, input, label, select")) card.classList.toggle("cgm-open");
