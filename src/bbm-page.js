@@ -2266,7 +2266,7 @@ return { mineIDs };
 })();
 
 // ---- src/bbm-home.js
-const { elapsedBucket, wordLabel, buildBylines, commentBodies, tweetFromOEmbed, tweetEndpoints, buildNews, buildGames, buildHome } = (() => {
+const { elapsedBucket, dayBucket, wordLabel, buildBylines, commentBodies, tweetFromOEmbed, tweetEndpoints, buildNews, buildGames, buildHome } = (() => {
 // The home page ships its widgets as a row of equal cards that each show
 // everything at once. This rebuilds it as four tabs: Player News (a uniform
 // run of compact stories under elapsed-time headings), NBA Today (the day's
@@ -2274,6 +2274,7 @@ const { elapsedBucket, wordLabel, buildBylines, commentBodies, tweetFromOEmbed, 
 // (the full list, bodies borrowed from the comments page), and Live Matches
 // (one live scoreboard card per league). Nodes are moved, never cloned, so the
 // site's own postbacks keep working.
+
 
 
 
@@ -2309,9 +2310,9 @@ const COMMENTS_VISIBLE = 4;
 // How long ago a story happened, from the site's own relative stamp. The
 // headings are elapsed time rather than calendar days, because a story carries
 // only its relative age.
-const HOURS = { m: 1 / 60, h: 1, d: 24, w: 24 * 7 };
+const HOURS = { s: 1 / 3600, m: 1 / 60, h: 1, d: 24, w: 24 * 7 };
 function elapsedBucket(since) {
-  const match = /^([\d.]+)\s*(m|h|d|w)/.exec(String(since || "").trim());
+  const match = /^([\d.]+)\s*(s|m|h|d|w)/.exec(String(since || "").trim());
   if (!match) return "Earlier";
   const hours = Number(match[1]) * HOURS[match[2]];
   if (hours < 1) return "Last hour";
@@ -2319,6 +2320,22 @@ function elapsedBucket(since) {
   if (hours < 48) return "Yesterday";
   if (hours < 24 * 7) return "This week";
   return "Earlier";
+}
+
+// A feed that carries several days needs day-level headings: the home page's
+// coarse ones fold everything from two days to a week into one bucket. The
+// site's own stamps can read "more than" an age, so that mark is ignored.
+function dayBucket(since) {
+  const match = /^>?\s*([\d.]+)\s*(s|m|h|d|w)/.exec(String(since || "").trim());
+  if (!match) return "Earlier";
+  const value = Number(match[1]);
+  const unit = match[2];
+  if (unit === "s" || unit === "m") return "Last hour";
+  if (unit === "h") return value < 24 ? "Today" : "Yesterday";
+  if (unit === "w") return "Earlier";
+  if (value < 1) return "Today";
+  if (value < 2) return "Yesterday";
+  return `${Math.floor(value)} days ago`;
 }
 
 // The site's status words arrive in capitals; a chip reads better in sentence
@@ -2331,13 +2348,13 @@ const storyCards = (body) => [...body.querySelectorAll(".news-card")].filter((ca
 
 // Tag every card with its status word and its elapsed bucket, and let a click
 // open the full note in place.
-function tagStories(cards) {
+function tagStories(cards, bucket = elapsedBucket) {
   const words = new Map();
   for (const card of cards) {
     card.classList.add("cgm-story");
     const word = card.querySelector(".news-card-test-status-corner")?.textContent.trim() || "";
     card.dataset.cgmWord = word;
-    card.dataset.cgmBucket = elapsedBucket(card.querySelector(".time-since")?.textContent);
+    card.dataset.cgmBucket = bucket(card.querySelector(".time-since")?.textContent);
     words.set(word, (words.get(word) || 0) + 1);
     // The priority word becomes a coloured dot, so it keeps its word as a tooltip.
     const level = card.querySelector(".news-card-test-level");
@@ -2581,9 +2598,17 @@ function paintHeadings(list, cards) {
   }
 }
 
-function paint(cards, list, ui, state) {
-  const shown = cards.filter((card) => state.word === "all" || card.dataset.cgmWord === state.word);
-  const { listed } = storyParts(shown, state.all);
+// The player a story is about, by the id the site links them by.
+const playerID = (card) => /[?&]i=(\d+)/.exec(card.querySelector(".display-player-name")?.getAttribute("href") || "")?.[1] || null;
+
+function paint(cards, list, ui, state, fold = true, mine = false) {
+  const shown = cards.filter((card) => {
+    if (state.word !== "all" && card.dataset.cgmWord !== state.word) return false;
+    // "My Players" keeps only the stories about the reader's own players.
+    if (mine && state.mine && !state.mineIds.has(playerID(card))) return false;
+    return true;
+  });
+  const { listed } = fold ? storyParts(shown, state.all) : { listed: new Set(shown) };
   // The feed is one uniform run until "Show all"; any other story is out of
   // the list, not merely unstyled.
   for (const card of cards) {
@@ -2592,7 +2617,7 @@ function paint(cards, list, ui, state) {
   }
   paintHeadings(list, shown.filter((card) => listed.has(card)));
   ui.empty.hidden = shown.length > 0;
-  ui.more.hidden = shown.length <= NEWS_VISIBLE;
+  ui.more.hidden = !fold || shown.length <= NEWS_VISIBLE;
   ui.more.textContent = state.all ? "Show fewer" : `Show all ${shown.length} stories`;
 }
 
@@ -2611,10 +2636,14 @@ function markMine(cards) {
   });
 }
 
-function buildNews(body) {
-  const cards = storyCards(body);
-  if (!cards.length) return;
-  const words = tagStories(cards);
+// The feed. `all` keeps every story on the page instead of folding them
+// behind "Show all"; `bucket` decides the headings; `mine` turns the site's
+// own "My Players" control into a filter of the feed instead of a postback
+// that would replace the feed with the site's own news.
+function buildNews(body, { all = false, bucket = elapsedBucket, mine = false } = {}) {
+  let cards = storyCards(body);
+  if (!cards.length) return null;
+  let words = tagStories(cards, bucket);
 
   // The site's own heading — the link to the full feed — stays, and moves in
   // beside the status chips.
@@ -2626,7 +2655,7 @@ function buildNews(body) {
     if (wrapper && wrapper !== body && !wrapper.children.length) wrapper.remove();
   }
 
-  const state = { word: "all", all: false };
+  const state = { word: "all", all: false, mine: false, mineIds: new Set() };
   const list = div("cgm-stories");
   list.append(...cards);
   const empty = Object.assign(document.createElement("p"), { className: "cgm-newsempty", textContent: "No stories" });
@@ -2634,15 +2663,19 @@ function buildNews(body) {
   const more = Object.assign(document.createElement("button"), { type: "button", className: "cgm-show-all" });
   const ui = { empty, more };
   const draw = () => {
-    paint(cards, list, ui, state);
+    paint(cards, list, ui, state, !all, mine);
     fillTweets(cards.filter((card) => !card.classList.contains("cgm-gone")));
   };
   more.addEventListener("click", () => { state.all = !state.all; draw(); });
 
-  const bar = div("cgm-newsbar", storyChips(cards, words, (key) => { state.word = key; state.all = false; draw(); }));
+  const bar = div("cgm-newsbar");
   const mineBox = Object.assign(document.createElement("span"), { className: "cgm-mine" });
   mineBox.append(...[body.querySelector("#MYONLY"), body.querySelector('label[for="MYONLY"]')].filter(Boolean));
-  bar.append(mineBox);
+  const setWords = (next) => {
+    words = next;
+    bar.replaceChildren(storyChips(cards, words, (key) => { state.word = key; state.all = false; draw(); }), mineBox);
+  };
+  setWords(words);
   head.append(bar);
   dropStraySpace(body);
 
@@ -2655,7 +2688,35 @@ function buildNews(body) {
   body.append(list, empty, more);
   draw();
 
+  if (mine) {
+    const check = mineBox.querySelector("input");
+    if (check) {
+      // The site's control posts the page back, which would bring the site's
+      // own news in place of this feed, so it filters here instead.
+      check.removeAttribute("onclick");
+      check.addEventListener("change", () => { state.mine = check.checked; draw(); });
+      mineIDs().then((ids) => { state.mineIds = ids; draw(); });
+    }
+  }
+
   markMine(cards);
+
+  // A page that carries more history swaps the cards and keeps the feed. The
+  // cards arrive after the page's own images and bylines have run, so they are
+  // given their headshots and their byline here.
+  return {
+    setCards(next) {
+      for (const card of cards) card.remove();
+      cards = next;
+      state.word = "all";
+      list.replaceChildren(...cards);
+      setWords(tagStories(cards, bucket));
+      draw();
+      enhanceAll(list);
+      buildBylines(list);
+      markMine(cards);
+    },
+  };
 }
 
 // The games widget is a flat run of divs: time, matchup, then player rows.
@@ -2791,34 +2852,132 @@ function buildHome() {
 
   pick(readTab());
 }
-return { elapsedBucket, wordLabel, buildBylines, commentBodies, tweetFromOEmbed, tweetEndpoints, buildNews, buildGames, buildHome };
+return { elapsedBucket, dayBucket, wordLabel, buildBylines, commentBodies, tweetFromOEmbed, tweetEndpoints, buildNews, buildGames, buildHome };
 })();
 
 // ---- src/bbm-news.js
 const { buildNewsPage } = (() => {
-// Player News (playernews.aspx) has four columns that all open at full length:
-// comments, polls, news and the games list. Fold each to a short list with a
-// "Show all" toggle, reuse the Home news filters, and keep the rest collapsed.
+// The Player News page becomes one wide feed of the site's own news, with
+// several days of it, and nothing else on the page. The stories come from the
+// site's All Player News page, whose "Past Days" control decides how much
+// history it carries; the cards move into this page, so their links keep
+// working. The page's comments, polls, games and returning-player panels go.
 
 
+
+const UPDATES_URL = "statusupdates.aspx";
+const DEFAULT_DAYS = 7;
+const DAYS = [1, 2, 3, 4, 5, 6, 7];
+
+const div = (className, ...nodes) => {
+  const box = Object.assign(document.createElement("div"), { className });
+  box.append(...nodes.filter(Boolean));
+  return box;
+};
+
+// The site's own cards, read out of the page it sends. A template holds them
+// until they are moved, so the fetched page's own ids never reach this one.
+function cardNodes(html) {
+  const template = document.createElement("template");
+  template.innerHTML = html;
+  return [...template.content.querySelectorAll(".news-card")];
+}
+
+// The number of days the site answered with. The control keeps it in the
+// session, so a post the site ignores answers with the days it already had.
+function daysIn(html) {
+  const select = String(html).match(/<select name='DAYSDD'[^>]*>([\s\S]*?)<\/select>/);
+  const selected = select && select[1].match(/<option[^>]*selected[^>]*value='(\d+)'/);
+  return selected ? Number(selected[1]) : null;
+}
+
+// The history the site's "Past Days" control asks for. The control is a
+// postback, so the page is posted with the number of days it should carry.
+async function loadUpdates(days) {
+  const first = await (await fetch(pageURL(UPDATES_URL), { credentials: "same-origin" })).text();
+  const ask = (fields) => postFields(pageURL(UPDATES_URL), fields, {
+    DAYSDD: String(days),
+    __EVENTTARGET: "DAYSDD",
+    __EVENTARGUMENT: "",
+  });
+  let posted = await ask(hiddenFields(first));
+  // A post the site ignored would answer with the days it already had, so the
+  // question is asked again with the viewstate that answer carries.
+  if (daysIn(posted) !== days) posted = await ask(hiddenFields(posted));
+  return { cards: cardNodes(posted), days: daysIn(posted) };
+}
+
+// The page keeps the news and nothing else. The panels that go are removed
+// with their column, so the news takes the whole width. The site's own hidden
+// refresh timer sits inside the news column, so it is removed on its own.
+function clearPage() {
+  for (const name of ["CommentsUpdatePanel", "PollsUpdatePanel", "GamesUpdatePanel"]) {
+    const node = document.getElementById(`ContentPlaceHolder1_${name}`);
+    (node?.closest("[class*='col']") || node)?.remove();
+  }
+  document.getElementById("ContentPlaceHolder1_MainTimer")?.remove();
+}
 
 function buildNewsPage() {
-  const comments = document.querySelectorAll("#ContentPlaceHolder1_CommentsPanel .comment-card");
-  if (comments.length) limit([...comments], 3, comments[0].parentElement, "comments");
+  const panel = document.querySelector("#ContentPlaceHolder1_NewsPanel");
+  if (!panel) return;
+  clearPage();
 
-  const holder = document.querySelector(".q-up-holder");
-  if (holder) limit([...holder.querySelectorAll(".q-up-item")], 3, holder, "polls");
+  const widget = panel.querySelector(".card-based") || panel;
+  const column = widget.closest("[class*='col']");
+  const row = column?.closest(".row");
+  const feed = div("cgm-feed cgm-news");
+  const host = row || column;
+  if (host) {
+    host.before(feed);
+    feed.append(widget);
+    host.remove();
+  } else {
+    feed.append(widget);
+  }
 
-  const news = document.querySelector("#ContentPlaceHolder1_NewsPanel .card-based");
-  const shell = news && accordion(news, "news-page-news", { open: true });
-  if (shell) buildNews(shell.body);
+  // The days the reader asks for, beside the status chips.
+  const days = div("cgm-feed-days");
+  const select = Object.assign(document.createElement("select"), { className: "cgm-days" });
+  for (const day of DAYS) {
+    const option = Object.assign(document.createElement("option"), { value: String(day), textContent: day === 1 ? "Today" : `${day} days` });
+    if (day === DEFAULT_DAYS) option.selected = true;
+    select.append(option);
+  }
+  days.append(Object.assign(document.createElement("span"), { className: "cgm-days-label", textContent: "Past" }), select);
 
-  const games = document.querySelector(".daily-status-updates");
-  if (games) buildGames(games);
+  // The site's own cards are today's news only, so the history replaces them
+  // once it arrives. The feed is built first, on the page's own cards, so the
+  // history can be swapped into it.
+  const controller = buildNews(widget, { all: true, bucket: dayBucket, mine: true });
+  if (!controller) return;
 
-  // The returning-players list runs long beside the news; give it its own scroll.
-  const returning = document.getElementById("LongTermInjuriedCB")?.closest(".border");
-  if (returning) returning.classList.add("cgm-scroll");
+  // The days control sits beside the chips, so it is put in the head row the
+  // feed just built.
+  widget.querySelector(".cgm-newshead")?.append(days);
+  select.addEventListener("change", async () => {
+    select.disabled = true;
+    try {
+      const history = await loadUpdates(Number(select.value));
+      // The control shows the days the site actually answered with, so it
+      // never claims a history the page does not carry.
+      if (history.days) select.value = String(history.days);
+      controller.setCards(history.cards);
+    } catch (error) {
+      console.error("ClutchGM could not read the news history", error);
+    }
+    select.disabled = false;
+  });
+
+  loadUpdates(DEFAULT_DAYS).then(
+    (history) => {
+      if (history.days) select.value = String(history.days);
+      controller.setCards(history.cards);
+    },
+    (error) => {
+      console.error("ClutchGM could not read the news history", error);
+    },
+  );
 }
 return { buildNewsPage };
 })();

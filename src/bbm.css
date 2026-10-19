@@ -279,6 +279,15 @@ html.cgm-bbm {
     .cgm-news .cgm-stories { column-gap: 64px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); row-gap: 24px; }
     .cgm-news .cgm-dayhead { grid-column: 1 / -1; }
   }
+  /* ---------- The news page: one wide feed, nothing else ----------
+     The page's own comments, polls, games and returning-player panels go, and
+     the news takes the whole width with the days the reader asks for. */
+  .cgm-feed { margin: 0 auto; max-width: 1500px; padding: 16px 12px 24px; }
+  .cgm-feed .card-based { background: none; border: 0; border-radius: 0; box-shadow: none; margin: 0; max-height: none; overflow: visible; padding: 0; }
+  .cgm-feed .card-content { padding: 0; }
+  .cgm-feed-days { align-items: center; display: inline-flex; gap: 8px; }
+  .cgm-days-label { color: var(--cgm-faint); font-size: 12px; }
+  .cgm-days { background: var(--cgm-surface); border: 1px solid var(--cgm-line); border-radius: 8px; color: var(--cgm-text); font-size: 12.5px; padding: 4px 8px; }
   /* ---------- Live Matches: one compact card per league ----------
      The score line names its leader; each category chip keeps its full
      "ours–theirs" count in its tooltip. Dots carry the result colour so the
