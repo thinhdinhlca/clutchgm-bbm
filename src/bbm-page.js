@@ -1768,6 +1768,20 @@ function buildFacts(pairs) {
   return body.rows.length ? table : null;
 }
 
+// The page ships its Watch submit twice (page top and badge). The hero keeps
+// one; the rest go when the toolbox places it.
+function oneWatch(nodes) {
+  let kept = false;
+  return nodes.filter((node) => {
+    if (node.name !== "ToggleWatchButton") return true;
+    if (kept) {
+      node.remove();
+      return false;
+    }
+    kept = true;
+    return true;
+  });
+}
 function buildHero(h1, badge) {
   const { name, team, positions } = parseHeading(h1);
   const { pairs, actions, status, depthHref } = collectBadge(badge);
@@ -1795,26 +1809,41 @@ function buildHero(h1, badge) {
   const sub = buildSub(team, positions, depthHref);
   if (sub) main.append(sub);
 
+  const top = [...document.querySelectorAll('.container-fluid input[type="submit"]')]
+    .find((input) => /watch/i.test(input.value || "") && !badge.contains(input));
+  const mine = oneWatch(top && !actions.includes(top) ? [top, ...actions] : actions);
+
   const facts = buildFacts(pairs);
   if (facts) hero.append(facts);
-  return { hero, actions };
+  return { hero, actions: mine };
 }
 
-// One toolbox card holds the page actions plus the section toggles. Each
-// section toggle joins its lock button in one pill instead of two floating
-// chips. The sections the reader always wants are expanded; the custom-comment
-// toggle and its block go away entirely.
+// One toolbox card holds the section toggles as a single segmented bar. The
+// sections the reader always wants are expanded; the custom-comment toggle
+// and its block go away entirely.
 const ALWAYS_OPEN = [/user comments/i, /tracked leagues/i, /recent news/i];
 
-function sectionPill(header, chips) {
-  const pill = document.createElement("span");
-  pill.className = "cgm-section";
-  pill.append(...header.childNodes);
-  chips.append(pill);
-  header.remove();
+function syncPill(pill, toggle) {
+  const target = document.querySelector(toggle.getAttribute("data-target"));
+  pill.classList.toggle("cgm-on", !!target?.classList.contains("show"));
+}
+
+function watchToggle(pill, toggle) {
+  syncPill(pill, toggle);
+  toggle.addEventListener("click", () => {
+    const target = document.querySelector(toggle.getAttribute("data-target"));
+    if (target && !target.classList.contains("show")) {
+      setTimeout(() => target.scrollIntoView({ behavior: "smooth", block: "start" }), 120);
+    }
+    setTimeout(() => syncPill(pill, toggle), 420);
+  });
 }
 
 function moveToggles(chips) {
+  const segments = document.createElement("div");
+  segments.className = "cgm-segments";
+  segments.setAttribute("role", "group");
+  segments.setAttribute("aria-label", "Sections");
   for (const header of [...document.querySelectorAll(".collapse-control-header")]) {
     const toggle = header.querySelector('[data-toggle="collapse"]');
     const label = text(toggle);
@@ -1825,8 +1854,14 @@ function moveToggles(chips) {
       continue;
     }
     if (!toggle) continue;
-    sectionPill(header, chips);
+    const pill = document.createElement("span");
+    pill.className = "cgm-section";
+    pill.append(...header.childNodes);
+    header.remove();
+    watchToggle(pill, toggle);
+    segments.append(pill);
   }
+  if (segments.children.length) chips.append(segments);
 }
 
 function expandPinned(chips) {
@@ -1835,18 +1870,16 @@ function expandPinned(chips) {
     if (!target || !ALWAYS_OPEN.some((pattern) => pattern.test(text(toggle)))) continue;
     document.querySelector(target)?.classList.add("show");
     toggle.setAttribute("aria-expanded", "true");
+    toggle.closest(".cgm-section")?.classList.add("cgm-on");
   }
 }
 
-// The Watch button sits with the section toggles, right before Edit Display,
-// instead of floating in its own group. The page ships the submit twice; the
-// toolbox keeps one and every other copy goes.
-function placeWatch(buttons, chips) {
-  const watch = buttons.querySelector('[name="ToggleWatchButton"]');
-  if (!watch) return;
-  const editHeader = [...chips.children].find((pill) => /edit display/i.test(text(pill)));
-  if (editHeader) chips.insertBefore(watch, editHeader);
-  else chips.append(watch);
+// Page actions live with the section toggles, right after the Sections bar:
+// Customize and Watch sit next to Edit Display. The page ships the Watch
+// submit twice; the toolbox keeps one.
+function placeWatch(actions, chips) {
+  if (!actions.length || !chips) return;
+  chips.append(...actions);
   const kept = chips.querySelector('[name="ToggleWatchButton"]');
   if (!kept) return;
   for (const duplicate of [...document.querySelectorAll('[name="ToggleWatchButton"]')]) {
@@ -1854,18 +1887,10 @@ function placeWatch(buttons, chips) {
   }
 }
 
-function buildToolbox(actions) {
+function buildToolbox() {
   const box = document.createElement("section");
   box.className = "cgm-toolbox";
   box.setAttribute("aria-label", "Player tools");
-  const doGroup = document.createElement("div");
-  doGroup.className = "cgm-tool-group";
-  doGroup.append(Object.assign(document.createElement("span"), { className: "cgm-tool-title", textContent: "Actions" }));
-  const buttons = document.createElement("div");
-  buttons.className = "cgm-tool-buttons";
-  buttons.append(...actions);
-  doGroup.append(buttons);
-  if (buttons.children.length) box.append(doGroup);
 
   const views = document.createElement("div");
   views.className = "cgm-tool-group";
@@ -1875,7 +1900,6 @@ function buildToolbox(actions) {
   views.append(chips);
   moveToggles(chips);
   expandPinned(chips);
-  placeWatch(buttons, chips);
   if (chips.children.length) box.append(views);
   return box.children.length ? box : null;
 }
@@ -1898,11 +1922,15 @@ function dayCard(dow, date, game) {
   const match = (game || "").trim();
   if (match) {
     const away = match.startsWith("@");
-    card.append(Object.assign(document.createElement("span"), {
-      className: `cgm-day-game ${away ? "cgm-away" : "cgm-home"}`,
-      textContent: away ? match.slice(1) : match,
-    }));
-    if (away) card.title = `at ${match.slice(1)}`;
+    const abbr = away ? match.slice(1) : match;
+    const pill = document.createElement("span");
+    pill.className = "cgm-day-game";
+    if (away) pill.append("@");
+    const logo = teamLogo(abbr, "cgm-day-logo");
+    if (logo) pill.append(logo);
+    pill.append(abbr);
+    card.append(pill);
+    if (away) card.title = `at ${abbr}`;
   } else {
     card.classList.add("cgm-off");
   }
@@ -1990,9 +2018,10 @@ function buildPlayer() {
   const box = badge.closest(".flat-container");
 
   const { hero, actions } = buildHero(h1, badge);
-  const toolbox = buildToolbox(actions);
+  const toolbox = buildToolbox();
   box?.before(hero);
   if (toolbox) hero.after(toolbox);
+  if (toolbox) placeWatch(actions, toolbox.querySelector(".cgm-tool-buttons"));
   badge.remove();
   if (box && !text(box)) box.remove();
 
