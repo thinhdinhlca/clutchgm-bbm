@@ -273,8 +273,8 @@ return { currentTheme, onThemeChange };
 // ---- src/bbm-board.js
 const { applyHeat, fixChips, buildBoards, paintBoards } = (() => {
 // Turns Basketball Monster's data tables into boards: one scroller, sticky
-// header and name column, repeated round headers folded into dividers, and
-// heat cells on ClutchGM's scale.
+// header and name column, repeated header rows dropped, and heat cells on
+// ClutchGM's scale.
 
 
 
@@ -295,25 +295,18 @@ function wrap(table) {
   return board;
 }
 
-// BBM repeats the header row every round. Keep the first, turn the rest into
-// "Round N" dividers when there is a Round column, otherwise hide them.
+// BBM repeats the header row between groups of rows. The repeat carries the same
+// column labels again, so it holds no title of its own: the round column of this
+// page is a per-row value (a player's round under each projection set), so it
+// cannot name a group. The sticky header already labels every column, so a repeat
+// is hidden and BBM's own spacer row stays to mark the gap.
 function foldRepeatedHeaders(table) {
   const rows = [...table.rows];
   const first = rows.find(isHeaderRow);
   if (!first) return;
-  const labels = cellsOf(first).map((cell) => cell.textContent.trim().toLowerCase());
-  const roundAt = labels.findIndex((label) => label === "round" || label === "rd");
   for (const row of rows) {
     if (row === first || !isHeaderRow(row) || row.closest("thead")) continue;
-    const next = row.nextElementSibling;
-    const round = roundAt >= 0 && next ? cellsOf(next)[roundAt]?.textContent.trim() : "";
-    if (round) {
-      const cell = Object.assign(document.createElement("td"), { colSpan: row.children.length, textContent: `Round ${round}` });
-      row.replaceChildren(cell);
-      row.className = "cgm-round-row";
-    } else {
-      row.classList.add("cgm-dup-head");
-    }
+    row.classList.add("cgm-dup-head");
   }
 }
 
