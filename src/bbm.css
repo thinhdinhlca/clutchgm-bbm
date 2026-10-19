@@ -378,88 +378,66 @@ html.cgm-bbm {
   .cgm-newsempty { color: var(--cgm-faint); font-size: 13px; padding: 14px 0; }
   .cgm-dayhead { color: var(--cgm-faint); font-size: 10.5px; font-weight: 800; letter-spacing: 0.08em; margin: 16px 0 4px; text-transform: uppercase; }
   .cgm-stories > .cgm-dayhead:first-child { margin-top: 2px; }
-  /* player news: the newest story of the active filter leads, the rest are
-     brief rows that open in place */
+  /* player news: a byline row (headshot plus team logo), the name line, the
+     full note, and the linked tweet when the story has one */
   .news-card:has(.news-card-test-header) {
-    align-items: center;
     box-shadow: none !important;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px 8px;
+    display: grid;
+    gap: 8px 14px;
+    grid-template-columns: minmax(0, 1fr) auto;
     margin: 0;
     padding: 0;
     position: relative;
-    /* The card's own width decides whether the meta fits beside the name, so
-       the card is its own size container. */
-    container-type: inline-size;
-    /* The player name must start at the same x on every brief. The status pill
-       holds a fixed column and the player block follows it, so the name no
-       longer depends on how wide the source, time and level text happen to be.
-       The meta group is last in visual order, so its auto margin takes the
-       slack and it still lands on the card's right edge. */
-    > .display-player { align-items: center; display: inline-flex; flex: 0 1 auto; flex-wrap: wrap; gap: 6px; min-width: 0; order: 2; }
+    > .cgm-byline { align-items: center; display: flex; gap: 12px; grid-area: 1 / 1; }
+    > .news-card-test-header { align-self: center; display: flex; justify-content: flex-end; margin: 0; position: static; grid-area: 1 / 2; }
+    > .display-player { align-items: center; display: flex; flex-wrap: wrap; gap: 6px 10px; grid-area: 2 / 1 / 3 / 3; min-width: 0; }
+    > .news-card-test-body-row { grid-column: 1 / -1; line-height: 1.5; margin-top: 0; }
+    > .news-card-bottom-row { grid-column: 1 / -1; }
   }
-  .cgm-story.cgm-brief { cursor: pointer; padding: 10px 2px 11px; }
+  .cgm-byline .cgm-head { height: 48px; width: 48px; }
+  .cgm-byline span.cgm-head.cgm-fallback { font-size: 14px; }
+  .cgm-byline .cgm-logo { height: 38px; width: auto; }
+  .cgm-story.cgm-brief { cursor: pointer; padding: 12px 2px 13px; }
   /* A brief keeps the site's own status tint, so the hover has to outrank that
      inline colour to be seen at all. */
   .cgm-story.cgm-brief:hover { background: color-mix(in srgb, var(--cgm-text) 7%, transparent) !important; }
-  /* The lead is the one story of the filter with room for a full note and a
-     large headshot; it is a grid so each piece keeps its own place however long
-     the note runs. */
+  /* The lead is the one story of the filter with room for a larger byline and
+     a tinted card; the grid is shared so every card reads the same way. */
   .cgm-story.cgm-lead {
     background: color-mix(in srgb, var(--cgm-status, var(--cgm-line)) 10%, var(--cgm-surface)) !important;
     border: 1px solid color-mix(in srgb, var(--cgm-status, var(--cgm-line)) 26%, var(--cgm-line));
     border-radius: 12px;
-    column-gap: 14px;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
     padding: 16px 18px 18px;
-    row-gap: 8px;
-    > .news-card-test-corner-group { grid-area: 1 / 1; }
-    > .news-card-test-header { align-self: center; grid-area: 1 / 2; justify-self: end; margin: 0; }
-    > .display-player { align-items: center; display: flex; flex-wrap: wrap; gap: 10px; grid-area: 2 / 1 / 3 / 3; }
-    > .news-card-test-body-row { grid-area: 3 / 1 / 4 / 3; margin-top: 0; padding-left: 78px; }
-    > .news-card-bottom-row { grid-area: 4 / 1 / 5 / 3; }
   }
+  .cgm-story.cgm-lead .cgm-byline .cgm-head { height: 72px; width: 72px; }
+  .cgm-story.cgm-lead .cgm-byline span.cgm-head.cgm-fallback { font-size: 20px; }
+  .cgm-story.cgm-lead .cgm-byline .cgm-logo { height: 44px; }
   .cgm-story .news-card-test-body { color: var(--cgm-muted); }
-  .cgm-story.cgm-brief .news-card-test-body { font-size: 13px; }
-  .cgm-story.cgm-brief:not(.cgm-open) .news-card-test-body { -webkit-box-orient: vertical; display: -webkit-box; -webkit-line-clamp: 1; overflow: hidden; word-break: break-word; }
+  .cgm-story.cgm-brief .news-card-test-body { font-size: 14px; }
   .cgm-story.cgm-brief:hover .news-card-test-body,
   .cgm-story.cgm-open .news-card-test-body { color: var(--cgm-text); }
   .cgm-story.cgm-lead .news-card-test-body { color: var(--cgm-text); font-size: 15px; }
   /* The site floats this group on the card's corner (absolute at every width,
      and at 520 px and below a static group with a -16 px left / -12 px top
-     margin). Our row needs it in flow, flush, as the label's own column. */
-  .news-card-test-corner-group { flex: 0 0 104px; margin: 0; order: 1; position: static; }
+     margin). Our pill rides right after the name, so it stays in flow with no
+     column of its own. */
+  .news-card-test-corner-group { flex: none; margin: 0; position: static; }
   /* The status pill always sits on its saturated status colour, so its text
      stays white even when a page rule tries to darken it. */
   .news-card-test-corner-group .status-square,
   .news-card-test-corner-group .status-square * { color: #fff !important; }
-  .news-card-test-header { display: flex; justify-content: flex-end; margin: 0 0 0 auto; order: 3; position: static; }
-  .news-card-test-body-row { flex: 1 0 100%; line-height: 1.5; margin-top: 2px; order: 4; }
-  .news-card-bottom-row { flex: 1 0 100%; order: 5; }
-
-  /* A card too narrow for the meta beside it gives the meta its own row and
-     stops measuring the player block, so the status and the name share the
-     first row at every card width and only the chips wrap under the name. */
-  @container (max-width: 520px) {
-    .news-card:has(.news-card-test-header) > .display-player { flex-basis: 0; flex-grow: 1; }
-    .news-card-test-header { flex: 1 0 100%; }
-  }
   .display-player-name { white-space: nowrap; }
   /* A name longer than its card must wrap rather than run past the card edge. */
   .news-card .display-player-name { white-space: normal; }
-  .cgm-story .display-player-name { font-weight: 700; }
-  /* The line box must be taller than the pill's, or centring the two in one row
-     drops the name below the pill at small card widths. */
-  .cgm-story.cgm-brief .display-player-name { font-size: 15px !important; line-height: 1.35; }
+  .cgm-story .display-player-name { color: var(--cgm-accent) !important; font-weight: 800; letter-spacing: 0.01em; text-transform: uppercase; }
+  .cgm-story.cgm-brief .display-player-name { font-size: 17px !important; line-height: 1.25; }
   .cgm-story.cgm-lead .display-player-name { font-size: 26px !important; line-height: 1.15; }
   .comment-card .display-player-name { font-size: 14px !important; }
-  .cgm-story .cgm-head { height: 34px; width: 34px; }
-  .cgm-story.cgm-lead .cgm-head { height: 64px; width: 64px; }
-  .cgm-story.cgm-lead span.cgm-head.cgm-fallback { font-size: 18px; }
   .cgm-story .display-player-team, .cgm-story .display-player-pos { font-size: 11.5px; }
   .cgm-story.cgm-lead .display-player-team, .cgm-story.cgm-lead .display-player-pos { font-size: 12.5px; }
+  /* The linked tweet reads as a quoted follow-up under the note. */
+  .cgm-tweet { border-left: 2px solid var(--cgm-line); color: var(--cgm-muted); font-size: 13px; grid-column: 1 / -1; line-height: 1.5; padding-left: 10px; }
+  .cgm-tweet-via { color: var(--cgm-faint); font-size: 11px; font-weight: 700; margin-bottom: 2px; }
   .news-card-bottom-row { margin: 6px 0 0; padding: 0; &:not(:has(.news-card-counts > *)) { display: none; } }
   /* The status word is a pill on a light tint of its own colour: the site's own
      rule is that a status label never sits on a dark fill. */

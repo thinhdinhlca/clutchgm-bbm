@@ -992,7 +992,7 @@ return { mineIDs };
 })();
 
 // ---- src/bbm-home.js
-const { elapsedBucket, wordLabel, commentBodies, buildNews, buildGames, buildHome } = (() => {
+const { elapsedBucket, wordLabel, buildBylines, commentBodies, tweetFromOEmbed, buildNews, buildGames, buildHome } = (() => {
 // The home page ships its widgets as a row of equal cards that each show
 // everything at once. This rebuilds it as three tabs: Player News (the newest
 // story leads, the rest are briefs under elapsed-time headings, with Today's
@@ -1066,11 +1066,32 @@ function tagStories(cards) {
     // The priority word becomes a coloured dot, so it keeps its word as a tooltip.
     const level = card.querySelector(".news-card-test-level");
     if (level) level.title = level.textContent.trim();
+    // The status pill rides right after the name instead of its own column.
+    const name = card.querySelector(".display-player-name");
+    const pill = card.querySelector(".news-card-test-corner-group");
+    if (name && pill && !pill.dataset.cgmMoved) {
+      pill.dataset.cgmMoved = "1";
+      name.after(pill);
+    }
     card.addEventListener("click", (event) => {
       if (!event.target.closest("a, button, input, label, select")) card.classList.toggle("cgm-open");
     });
   }
   return words;
+}
+
+// The card opens with a byline row: headshot plus team logo, RotoWire-style.
+// Runs after the headshots land, so the images exist to move; skipped cards
+// keep the old row and still read fine.
+function buildBylines(root = document) {
+  for (const card of root.querySelectorAll(".cgm-story:not(:has(.cgm-byline))")) {
+    const head = card.querySelector(".cgm-id > .cgm-head");
+    const logo = card.querySelector(".display-player-team > img");
+    if (!head || !logo) continue;
+    const byline = div("cgm-byline");
+    byline.append(head, logo);
+    card.prepend(byline);
+  }
 }
 
 // The home page ships comment cards without bodies; the full comments page
@@ -1124,6 +1145,68 @@ async function fillComments(scope) {
     }
   } catch { /* the teasers stand; a failed fill is not a page error */ }
 }
+// The tweet behind a story's source link, read through the oEmbed endpoint
+// (X blocks direct reads, so a CORS proxy carries it). Pure string work so
+// tests can cover it without a DOM.
+function tweetFromOEmbed(json) {
+  let data = null;
+  try { data = typeof json === "string" ? JSON.parse(json) : json; } catch { return null; }
+  const p = data && typeof data.html === "string" && data.html.match(/<p[^>]*>([\s\S]*?)<\/p>/);
+  if (!p) return null;
+  const text = p[1]
+    .replace(/<br\s*\/?>/gi, " ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&(amp|lt|gt|quot|#39|#x27);/g, (m) => ({ "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": '"', "&#39;": "'", "&#x27;": "'" }[m] || m))
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!text) return null;
+  const author = data.author_name || "";
+  const handle = String(data.author_url || "").split("/").filter(Boolean).pop() || "";
+  return { author, handle, text };
+}
+
+const TWEET_KEY = "cgmBbmTweets";
+const TWEET_TTL = 60 * 60 * 1000;
+
+// A story that links a tweet shows the tweet under the note. Only shown cards
+// fetch, each URL once per page load, and a failed fetch keeps the source
+// link standing instead of failing the page.
+async function fillTweets(cards) {
+  const jobs = cards.filter((card) => {
+    if (card.dataset.cgmTweet) return false;
+    card.dataset.cgmTweet = "1";
+    const href = card.querySelector(".news-card-test-source")?.getAttribute("href") || "";
+    return /(twitter\.com|x\.com)\/\w+\/status\/\d+/.test(href);
+  });
+  if (!jobs.length) return;
+  let cache = {};
+  try { cache = JSON.parse(sessionStorage.getItem(TWEET_KEY)) || {}; } catch { /* storage blocked */ }
+  const fresh = (at) => Date.now() - at < TWEET_TTL;
+  const one = async (card) => {
+    const href = card.querySelector(".news-card-test-source")?.getAttribute("href") || "";
+    try {
+      let entry = cache[href];
+      if (!entry || !fresh(entry.at)) {
+        const endpoint = "https://api.allorigins.win/get?url=" + encodeURIComponent(`https://publish.twitter.com/oembed?url=${encodeURIComponent(href)}&omit_script=true`);
+        const response = await fetch(endpoint);
+        if (!response.ok) return;
+        const tweet = tweetFromOEmbed((await response.json()).contents);
+        if (!tweet) return;
+        entry = { ...tweet, at: Date.now() };
+        cache[href] = entry;
+        try { sessionStorage.setItem(TWEET_KEY, JSON.stringify(cache)); } catch { /* storage blocked */ }
+      }
+      const box = div("cgm-tweet", div("cgm-tweet-via", `Via ${entry.author}${entry.handle ? ` (@${entry.handle})` : ""}`));
+      box.append(entry.text);
+      const row = card.querySelector(".news-card-test-body-row");
+      if (row) row.after(box);
+      else card.append(box);
+    } catch { /* the source link stands; a failed tweet is not a page error */ }
+  };
+  await Promise.allSettled(jobs.map(one));
+}
+
 // The filter row: one chip per status word with its count, plus All.
 function storyChips(cards, words, onPick) {
   const chips = div("cgm-chips");
@@ -1213,7 +1296,10 @@ function buildNews(body) {
   empty.hidden = true;
   const more = Object.assign(document.createElement("button"), { type: "button", className: "cgm-show-all" });
   const ui = { empty, more };
-  const draw = () => paint(cards, list, ui, state);
+  const draw = () => {
+    paint(cards, list, ui, state);
+    fillTweets(cards.filter((card) => !card.classList.contains("cgm-gone")));
+  };
   more.addEventListener("click", () => { state.all = !state.all; draw(); });
 
   const bar = div("cgm-newsbar", storyChips(cards, words, (key) => { state.word = key; state.all = false; draw(); }));
@@ -1360,7 +1446,7 @@ function buildHome() {
 
   pick(readTab());
 }
-return { elapsedBucket, wordLabel, commentBodies, buildNews, buildGames, buildHome };
+return { elapsedBucket, wordLabel, buildBylines, commentBodies, tweetFromOEmbed, buildNews, buildGames, buildHome };
 })();
 
 // ---- src/bbm-espn.js
@@ -2834,6 +2920,7 @@ function run() {
   });
   step("boards", buildBoards);
   step("images", () => enhanceAll());
+  step("bylines", () => buildBylines());
 
   // Colour fixes depend on which stylesheet is live, so they wait for it, then
   // look once more for late-rendered pieces.
