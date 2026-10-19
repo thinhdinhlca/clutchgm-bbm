@@ -1682,6 +1682,14 @@ const STATUS_TINT = [
   [/\bout\b/i, "#dc2626"],
 ];
 
+// Badge items wrap their links in value spans that sometimes survive empty
+// once the link moves out. Only nodes with text or a control survive.
+function keepNode(node) {
+  if (text(node)) return true;
+  if (node.querySelector?.("img,input,a,select,button,canvas,svg")) return true;
+  return /^(IMG|INPUT|A|SELECT|BUTTON|CANVAS|SVG)$/i.test(node.tagName || "");
+}
+
 function statusPill(value) {
   const pill = document.createElement("span");
   pill.className = "cgm-hero-status";
@@ -1718,7 +1726,7 @@ function collectBadge(badge) {
         depthHref ||= depth.getAttribute("href");
         continue;
       }
-      actions.push(...rest);
+      actions.push(...rest.filter(keepNode));
       continue;
     }
     if (/status/i.test(label) && !/questionable|games/i.test(label)) {
@@ -1812,10 +1820,17 @@ function buildHero(h1, badge) {
   const top = [...document.querySelectorAll('.container-fluid input[type="submit"]')]
     .find((input) => /watch/i.test(input.value || "") && !badge.contains(input));
   const mine = oneWatch(top && !actions.includes(top) ? [top, ...actions] : actions);
+  let buttons = null;
+  if (mine.length) {
+    buttons = document.createElement("div");
+    buttons.className = "cgm-hero-actions";
+    buttons.append(...mine);
+    main.append(buttons);
+  }
 
   const facts = buildFacts(pairs);
   if (facts) hero.append(facts);
-  return { hero, actions: mine };
+  return { hero, buttons };
 }
 
 // One toolbox card holds the section toggles as a single segmented bar. The
@@ -1874,16 +1889,18 @@ function expandPinned(chips) {
   }
 }
 
-// Page actions live with the section toggles, right after the Sections bar:
-// Customize and Watch sit next to Edit Display. The page ships the Watch
-// submit twice; the toolbox keeps one.
-function placeWatch(actions, chips) {
-  if (!actions.length || !chips) return;
-  chips.append(...actions);
-  const kept = chips.querySelector('[name="ToggleWatchButton"]');
+// The page ships the Watch submit twice; the hero keeps one and every other
+// copy goes, wherever it sits. Dropping a duplicate can empty the value span
+// that wrapped it, so those husks go too.
+function dedupeWatch(buttons) {
+  if (!buttons) return;
+  const kept = buttons.querySelector('[name="ToggleWatchButton"]');
   if (!kept) return;
   for (const duplicate of [...document.querySelectorAll('[name="ToggleWatchButton"]')]) {
     if (duplicate !== kept) duplicate.remove();
+  }
+  for (const husk of [...buttons.querySelectorAll("span")]) {
+    if (!text(husk) && !husk.querySelector("img,input,a,select,button,canvas,svg")) husk.remove();
   }
 }
 
@@ -2010,6 +2027,81 @@ function buildStatToggles(anchor) {
   return bar;
 }
 
+// The comments thread shows five cards inline; the rest wait in a hidden
+// store until "View all" opens the overlay. Nodes move, never clones, so the
+// vote and reply postbacks keep working.
+const SHOWN_COMMENTS = 5;
+
+function commentSpots(box) {
+  const cards = [...box.querySelectorAll(".comment-card")];
+  if (box.dataset.cgmComments || cards.length <= SHOWN_COMMENTS) return null;
+  box.dataset.cgmComments = "1";
+  return cards.map((card) => ({ card, parent: card.parentNode, next: card.nextSibling }));
+}
+
+function buildSheet(count, opener, onClose) {
+  const overlay = document.createElement("div");
+  overlay.className = "cgm-overlay";
+  overlay.hidden = true;
+  const sheet = document.createElement("div");
+  sheet.className = "cgm-sheet";
+  sheet.setAttribute("role", "dialog");
+  sheet.setAttribute("aria-modal", "true");
+  sheet.setAttribute("aria-label", "All comments");
+  const head = document.createElement("div");
+  head.className = "cgm-sheet-head";
+  head.append(Object.assign(document.createElement("span"), { className: "cgm-sheet-title", textContent: `All comments (${count})` }));
+  const close = Object.assign(document.createElement("button"), { type: "button", className: "cgm-sheet-close", textContent: "Close" });
+  head.append(close);
+  const list = document.createElement("div");
+  list.className = "cgm-sheet-list";
+  sheet.append(head, list);
+  overlay.append(sheet);
+  document.body.append(overlay);
+
+  const show = (open) => {
+    overlay.hidden = !open;
+    document.documentElement.classList.toggle("cgm-lock", open);
+    if (open) close.focus();
+    else opener.focus();
+  };
+  const hide = () => { onClose(); show(false); };
+  opener.addEventListener("click", () => show(true));
+  close.addEventListener("click", hide);
+  overlay.addEventListener("click", (event) => { if (event.target === overlay) hide(); });
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !overlay.hidden) hide(); });
+  return { show, list };
+}
+
+function buildComments() {
+  if (document.querySelector(".cgm-comments-all")) return null;
+  const box = document.querySelector("#commentsCollapseId-content");
+  const spots = box && commentSpots(box);
+  if (!spots) return null;
+  const store = document.createElement("div");
+  store.className = "cgm-comment-store";
+  store.hidden = true;
+  box.append(store);
+  const cards = spots.map((spot) => spot.card);
+  const open = document.createElement("button");
+  open.type = "button";
+  open.className = "cgm-comments-all";
+  open.textContent = `View all ${cards.length} comments`;
+  spots[SHOWN_COMMENTS - 1].parent.insertBefore(open, spots[SHOWN_COMMENTS - 1].next);
+  const sheet = buildSheet(cards.length, open, () => {
+    spots.slice(0, SHOWN_COMMENTS).forEach(({ card, parent, next }) => {
+      parent.insertBefore(card, parent.contains(next) ? next : null);
+    });
+    spots.slice(SHOWN_COMMENTS).forEach(({ card }) => store.append(card));
+  });
+  spots.slice(SHOWN_COMMENTS).forEach(({ card }) => store.append(card));
+  open.addEventListener("click", () => {
+    sheet.list.append(...cards);
+    sheet.show(true);
+  });
+  return open;
+}
+
 function buildPlayer() {
   if (document.querySelector(".cgm-hero")) return;
   const badge = document.querySelector(".player-stat-badge");
@@ -2017,15 +2109,16 @@ function buildPlayer() {
   if (!badge || !h1) return;
   const box = badge.closest(".flat-container");
 
-  const { hero, actions } = buildHero(h1, badge);
+  const { hero, buttons } = buildHero(h1, badge);
   const toolbox = buildToolbox();
   box?.before(hero);
   if (toolbox) hero.after(toolbox);
-  if (toolbox) placeWatch(actions, toolbox.querySelector(".cgm-tool-buttons"));
+  dedupeWatch(buttons);
   badge.remove();
   if (box && !text(box)) box.remove();
 
   buildSchedule();
+  buildComments();
   const toggles = [...document.querySelectorAll(".ml-2")].find((el) => el.querySelector('input[type="checkbox"]'));
   if (toggles) buildStatToggles(toggles);
 }

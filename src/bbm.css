@@ -363,6 +363,10 @@ html.cgm-bbm {
     > .display-player { flex: 0 1 auto; min-width: 0; order: 2; }
   }
   .news-card-test-corner-group { flex: 0 0 92px; order: 1; position: static; }
+  /* The status pill always sits on its saturated status colour, so its text
+     stays white even when a page rule tries to darken it. */
+  .news-card-test-corner-group .status-square,
+  .news-card-test-corner-group .status-square * { color: #fff !important; }
   .news-card-test-header { display: flex; justify-content: flex-end; margin: 0 0 0 auto; order: 3; position: static; }
   .news-card-test-body-row { flex: 1 0 100%; line-height: 1.5; margin-top: 2px; order: 4; }
   .news-card-bottom-row { flex: 1 0 100%; order: 5; }
@@ -648,6 +652,28 @@ html.cgm-bbm {
   &.cgm-page-playerinfo .cgm-hero-team { font-size: 14px; font-weight: 700; }
   &.cgm-page-playerinfo a.cgm-hero-team { color: inherit; text-decoration: none; }
   &.cgm-page-playerinfo a.cgm-hero-team:hover { color: var(--cgm-accent); text-decoration: underline; }
+  &.cgm-page-playerinfo .cgm-hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  &.cgm-page-playerinfo .cgm-hero-actions a,
+  &.cgm-page-playerinfo .cgm-hero-actions input[type="submit"] {
+    background: var(--cgm-surface);
+    border: 1px solid var(--cgm-line);
+    border-radius: 8px;
+    color: var(--cgm-text);
+    cursor: pointer;
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 6px 12px;
+    text-decoration: none;
+  }
+  &.cgm-page-playerinfo .cgm-hero-actions a:hover,
+  &.cgm-page-playerinfo .cgm-hero-actions input[type="submit"]:hover {
+    border-color: var(--cgm-accent);
+  }
   &.cgm-page-playerinfo .cgm-hero-pos {
     background: var(--cgm-accent-soft);
     border-radius: 6px;
@@ -718,23 +744,6 @@ html.cgm-bbm {
     flex-wrap: wrap;
     gap: 8px;
   }
-  &.cgm-page-playerinfo .cgm-tool-buttons > a,
-  &.cgm-page-playerinfo .cgm-tool-buttons > input[type="submit"] {
-    align-self: center;
-    background: var(--cgm-surface);
-    border: 1px solid var(--cgm-line);
-    border-radius: 8px;
-    color: var(--cgm-text);
-    cursor: pointer;
-    font-size: 12.5px;
-    font-weight: 600;
-    padding: 6px 12px;
-    text-decoration: none;
-  }
-  &.cgm-page-playerinfo .cgm-tool-buttons > a:hover,
-  &.cgm-page-playerinfo .cgm-tool-buttons > input[type="submit"]:hover {
-    border-color: var(--cgm-accent);
-  }
   &.cgm-page-playerinfo .cgm-tool-buttons .collapse-control-header { display: contents; }
   &.cgm-page-playerinfo .cgm-tool-buttons input.btn { margin: 0; }
 
@@ -768,6 +777,67 @@ html.cgm-bbm {
   &.cgm-page-playerinfo .cgm-section > span + span { border-left: 1px solid var(--cgm-line-soft); }
   &.cgm-page-playerinfo .cgm-section input.btn { margin: 0; }
   &.cgm-page-playerinfo div.collapse { scroll-margin-top: 130px; }
+
+  /* Comments show five cards inline; the rest open in an overlay sheet. */
+  &.cgm-page-playerinfo .cgm-comments-all {
+    background: none;
+    border: 1px solid var(--cgm-line);
+    border-radius: 8px;
+    color: var(--cgm-text);
+    cursor: pointer;
+    font-size: 12.5px;
+    font-weight: 600;
+    margin: 8px 0 4px;
+    padding: 6px 12px;
+  }
+  &.cgm-page-playerinfo .cgm-comments-all:hover { border-color: var(--cgm-accent); }
+  &.cgm-page-playerinfo .cgm-overlay {
+    align-items: center;
+    background: rgba(2, 6, 23, 0.6);
+    display: flex;
+    inset: 0;
+    justify-content: center;
+    padding: 16px;
+    position: fixed;
+    z-index: 2000;
+  }
+  &.cgm-page-playerinfo .cgm-overlay[hidden] { display: none; }
+  &.cgm-page-playerinfo .cgm-sheet {
+    background: var(--cgm-bg);
+    border: 1px solid var(--cgm-line);
+    border-radius: 14px;
+    display: flex;
+    flex-direction: column;
+    max-height: 82vh;
+    max-width: 720px;
+    width: 100%;
+  }
+  &.cgm-page-playerinfo .cgm-sheet-head {
+    align-items: center;
+    border-bottom: 1px solid var(--cgm-line-soft);
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 16px;
+  }
+  &.cgm-page-playerinfo .cgm-sheet-title { font-size: 15px; font-weight: 800; }
+  &.cgm-page-playerinfo .cgm-sheet-close {
+    background: var(--cgm-surface);
+    border: 1px solid var(--cgm-line);
+    border-radius: 8px;
+    color: var(--cgm-text);
+    cursor: pointer;
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 6px 12px;
+  }
+  &.cgm-page-playerinfo .cgm-sheet-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow-y: auto;
+    padding: 12px 16px 16px;
+  }
+  &.cgm-lock { overflow: hidden; }
 
   /* Schedule by week: week blocks stack vertically, days share one row. */
   &.cgm-page-playerinfo table.cgm-sched-src { display: none; }
