@@ -296,10 +296,11 @@ function wrap(table) {
 }
 
 // BBM repeats the header row between groups of rows. The repeat carries the same
-// column labels again, so it holds no title of its own: the round column of this
-// page is a per-row value (a player's round under each projection set), so it
-// cannot name a group. The sticky header already labels every column, so a repeat
-// is hidden and BBM's own spacer row stays to mark the gap.
+// column labels again, so it holds no title of its own — and a round column it
+// sits above is per-row data (on the playerinfo "Per Game" table, each row's own
+// projected round under that projection set, unsorted), not a group name. The
+// sticky header already labels every column, so a repeat is hidden and BBM's own
+// spacer row marks the break.
 function foldRepeatedHeaders(table) {
   const rows = [...table.rows];
   const first = rows.find(isHeaderRow);
