@@ -1374,7 +1374,7 @@ return { ESPN_IDS };
 })();
 
 // ---- src/bbm-images.js
-const { teamFile, logoPath, normalizeName, espnIdFor, headshotURL, initials, headshot, teamLogo, enhanceTables, enhanceCards, enhanceGames, enhanceAll } = (() => {
+const { teamFile, logoPath, teamColor, normalizeName, espnIdFor, headshotURL, initials, headshot, teamLogo, logoURL, enhanceTables, enhanceCards, enhanceGames, enhanceAll } = (() => {
 // Team logos (bundled) and player headshots (ESPN CDN) for BBM pages.
 // Logos resolve from the team abbreviation in each row. Headshots resolve
 // from the ESPN id map in bbm-espn.js; unknown players get an initials chip.
@@ -1395,6 +1395,23 @@ function teamFile(abbrev) {
 function logoPath(abbrev) {
   const file = teamFile(abbrev);
   return file ? `src/assets/nba/${file}` : null;
+}
+
+// Primary brand colour per bundled logo file, used for the schedule day tint.
+// Each value is the dominant saturated colour of that logo, measured with a
+// canvas read of the bundled PNG rather than hand-picked from brand guides.
+const TEAM_COLOR = {
+  atl: "#eb2342", bkn: "#808080", bos: "#018442", cha: "#3a2d75", chi: "#c30936",
+  cle: "#a00938", dal: "#014f8f", den: "#031f40", det: "#ed3752", gs: "#03418b",
+  hou: "#cf112d", ind: "#0f2641", lac: "#19214b", lal: "#dea40e", mem: "#273d6c",
+  mia: "#8d0022", mil: "#24613d", min: "#395b97", no: "#162d49", ny: "#d77b26",
+  okc: "#355181", orl: "#3964a6", phi: "#00408d", phx: "#ca4f0e", por: "#a22326",
+  sa: "#747b7d", sac: "#764091", tor: "#f00940", utah: "#502c86", wsh: "#0c3064",
+};
+
+function teamColor(abbrev) {
+  const file = teamFile(abbrev);
+  return file ? TEAM_COLOR[file.replace(/\.png$/, "")] || null : null;
 }
 
 function normalizeName(name) {
@@ -1484,6 +1501,12 @@ function teamLogo(abbrev, cls = "cgm-logo") {
   return logo;
 }
 
+// Resolved URL of the bundled logo, for use as a CSS background image.
+function logoURL(abbrev) {
+  const path = logoPath(abbrev);
+  return path ? assetURL(path) : null;
+}
+
 function logoFor(abbrev) {
   const path = logoPath(abbrev);
   if (!path) return null;
@@ -1564,7 +1587,7 @@ function enhanceAll(root = document) {
     setTimeout(() => { queued = false; enhanceAll(); }, 300);
   }).observe(document.body, { childList: true, subtree: true });
 }
-return { teamFile, logoPath, normalizeName, espnIdFor, headshotURL, initials, headshot, teamLogo, enhanceTables, enhanceCards, enhanceGames, enhanceAll };
+return { teamFile, logoPath, teamColor, normalizeName, espnIdFor, headshotURL, initials, headshot, teamLogo, logoURL, enhanceTables, enhanceCards, enhanceGames, enhanceAll };
 })();
 
 // ---- src/bbm-news.js
@@ -1967,15 +1990,23 @@ function dayCard(dow, date, game) {
     const pill = document.createElement("span");
     pill.className = "cgm-day-game";
     if (away) pill.append("@");
-    const logo = teamLogo(abbr, "cgm-day-logo");
-    if (logo) pill.append(logo);
     pill.append(abbr);
     card.append(pill);
     if (away) card.title = `at ${abbr}`;
+    setTeamSkin(card, abbr);
   } else {
     card.classList.add("cgm-off");
   }
   return card;
+}
+
+// The day wears the opponent's colours: a light tint of the team's primary
+// colour plus the full team logo as a backdrop under the day's own text.
+function setTeamSkin(card, abbr) {
+  const url = logoURL(abbr);
+  if (url) card.style.setProperty("--cgm-team-logo", `url("${url}")`);
+  const color = teamColor(abbr);
+  if (color) card.style.setProperty("--cgm-team-color", color);
 }
 
 function buildSchedule() {

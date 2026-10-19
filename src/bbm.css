@@ -653,22 +653,36 @@ html.cgm-bbm {
   &.cgm-page-playerinfo a.cgm-hero-team { color: inherit; text-decoration: none; }
   &.cgm-page-playerinfo a.cgm-hero-team:hover { color: var(--cgm-accent); text-decoration: underline; }
   &.cgm-page-playerinfo .cgm-hero-actions {
+    align-items: center;
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
     margin-top: 12px;
   }
+  /* The page's Watch submit and the Customize anchor must look identical: the
+     site's .btn presets give the input its own font, height, line-height and
+     padding, so every box property is pinned here. Same height plus the same
+     line-height centres the text in both, and the flex row centres the boxes. */
   &.cgm-page-playerinfo .cgm-hero-actions a,
   &.cgm-page-playerinfo .cgm-hero-actions input[type="submit"] {
     background: var(--cgm-surface) !important;
     border: 1px solid var(--cgm-line) !important;
     border-radius: 8px;
+    box-sizing: border-box;
     color: var(--cgm-text) !important;
     cursor: pointer;
+    display: inline-block;
+    font-family: inherit !important;
     font-size: 12.5px;
     font-weight: 600;
-    padding: 6px 12px;
+    height: 32px !important;
+    line-height: 30px !important;
+    margin: 0 !important;
+    padding: 0 12px !important;
+    text-align: center;
     text-decoration: none !important;
+    vertical-align: middle;
+    white-space: nowrap;
   }
   &.cgm-page-playerinfo .cgm-hero-actions a:hover,
   &.cgm-page-playerinfo .cgm-hero-actions input[type="submit"]:hover {
@@ -863,17 +877,41 @@ html.cgm-bbm {
   }
   &.cgm-page-playerinfo .cgm-day {
     align-items: center;
-    background: var(--cgm-surface);
+    background: color-mix(in srgb, var(--cgm-team-color, var(--cgm-surface)) 13%, var(--cgm-surface));
     border: 1px solid var(--cgm-line-soft);
     border-radius: 10px;
     display: flex;
     flex-direction: column;
     gap: 2px;
+    justify-content: flex-start;
+    min-height: 108px;
     min-width: 0;
-    padding: 6px 4px;
+    overflow: hidden;
+    padding: 8px 4px;
+    position: relative;
   }
+  /* The game's team logo fills the bottom of the day card as a faint backdrop,
+     and the card wears a light tint of that same team's primary colour. Both
+     come from the per-card custom properties dayCard() sets. */
+  &.cgm-page-playerinfo .cgm-day::before {
+    background-image: var(--cgm-team-logo, none);
+    background-position: center bottom 2px;
+    background-repeat: no-repeat;
+    background-size: 48px 48px;
+    content: "";
+    inset: 0;
+    opacity: 0.42;
+    pointer-events: none;
+    position: absolute;
+  }
+  &.cgm-page-playerinfo .cgm-day > * { position: relative; }
+  /* A day without a game has no logo behind it, so its date sits centred and
+     the whole card stays quiet. */
+  &.cgm-page-playerinfo .cgm-day.cgm-off { justify-content: center; opacity: 0.45; }
   &.cgm-page-playerinfo .cgm-day-dow {
-    color: var(--cgm-faint);
+    /* The team tint lifts the card's background off pure white, so the
+       weekday label needs the stronger muted tone to hold its contrast. */
+    color: var(--cgm-muted);
     font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.05em;
@@ -882,20 +920,38 @@ html.cgm-bbm {
   &.cgm-page-playerinfo .cgm-day-date { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
   &.cgm-page-playerinfo .cgm-day-game {
     align-items: center;
-    border: 1px solid var(--cgm-line-soft);
-    border-radius: 999px;
+    /* No chip surface: the day's tint and the team logo backdrop sit behind
+       the name, so a box would only hide them. */
+    background: none;
+    border: 0;
+    border-radius: 0;
     display: inline-flex;
     font-size: 11.5px;
     font-weight: 700;
     gap: 4px;
     max-width: 100%;
     overflow: hidden;
-    padding: 2px 8px;
+    padding: 2px;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  &.cgm-page-playerinfo .cgm-day-logo { flex: none; height: 14px; width: 14px; }
-  &.cgm-page-playerinfo .cgm-day.cgm-off { opacity: 0.45; }
+
+  /* A phone fits seven day columns at roughly 39 px each, where the longest
+     away names ("@WAS", "@PHO") need a smaller card, and an iPhone needs the
+     chip's padding spent on its text. These sit after the base rules above so
+     they win on source order at equal specificity. */
+  @media (max-width: 640px) {
+    &.cgm-page-playerinfo .cgm-week-days { gap: 4px; }
+    &.cgm-page-playerinfo .cgm-day { min-height: 84px; padding: 6px 2px; }
+    &.cgm-page-playerinfo .cgm-day::before { background-size: 34px 34px; }
+    &.cgm-page-playerinfo .cgm-day-dow { font-size: 9px; letter-spacing: 0.02em; }
+    &.cgm-page-playerinfo .cgm-day-date { font-size: 12px; }
+    &.cgm-page-playerinfo .cgm-day-game { font-size: 10px; gap: 2px; }
+  }
+  @media (max-width: 480px) {
+    &.cgm-page-playerinfo .cgm-day { padding: 6px 0; }
+    &.cgm-page-playerinfo .cgm-day-game { font-size: 9px; padding: 0; }
+  }
 
   /* Stat toggles grouped with titles instead of one bare row. */
   &.cgm-page-playerinfo .cgm-toggles {
