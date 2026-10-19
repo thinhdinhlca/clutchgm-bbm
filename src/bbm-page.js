@@ -1730,25 +1730,24 @@ return { teamFile, logoPath, teamColor, normalizeName, espnIdFor, headshotURL, i
 })();
 
 // ---- src/bbm-boxsheet.js
-const { gameSection, gameTable, gamePlayers, commentCards, openBox } = (() => {
+const { gameSection, gameTable, gamePlayers, analystComments, openBox } = (() => {
 // The box score sheet: the game's own table from the Box Scores page the NBA
-// Today tab already holds, and the community's comments about the players in
-// it. The table is the site's own markup, so it keeps the site's columns; the
-// links that would post back to the Box Scores page are removed, because this
-// sheet sits on the home page's form.
+// Today tab already holds, and the site's own analyst comments about the
+// players in it. The table is the site's own markup, so it keeps the site's
+// columns; the links that would post back to the Box Scores page are removed,
+// because this sheet sits on the home page's form.
 //
-// The comments are read from the site's comments page, which holds one card
-// per comment about a player. The home page's own cards ship without bodies
-// and borrow them from that page by reply id (`commentBodies` in
-// `src/bbm-home.js`); here the whole card is read at once, because the sheet
-// needs the player, the author and the age as well as the text.
+// The analyst comments live on the site's Live Results page, one per player, in
+// the last column of its table: the comment itself is the tooltip's title and
+// the analyst's name sits beside the mark. The comments the community leaves
+// are on a different page and are not what a reader wants beside a box score.
 
 
 
 
-const COMMENTS_URL = "usercomments.aspx";
-const COMMENTS_KEY = "cgmBbmSheetComments";
-const COMMENTS_TTL = 10 * 60 * 1000;
+const RESULTS_URL = "dailysummary.aspx";
+const RESULTS_KEY = "cgmBbmSheetAnalysts";
+const RESULTS_TTL = 10 * 60 * 1000;
 
 const div = (className, ...nodes) => {
   const box = Object.assign(document.createElement("div"), { className });
@@ -1786,29 +1785,29 @@ function gamePlayers(table) {
     .map((match) => ({ id: match[1], name: plain(match[2]) }));
 }
 
-// The comments page's cards: who wrote them, about which player, and what they
-// said.
-function commentCards(html) {
-  const cards = [];
-  for (const chunk of String(html).split(/<div class="comment-card">/).slice(1)) {
-    const player = chunk.match(/playerInfo\.aspx\?i=(\d+)"[^>]*class="display-player-name[^"]*"[^>]*>([^<]+)</i);
-    if (!player) continue;
-    const body = chunk.match(/<div class="comment-card-text"[^>]*>([\s\S]*?)<\/div>/);
-    const user = chunk.match(/class="display-username[^"]*"[^>]*>([^<]+)/);
-    const team = chunk.match(/class="[^"]*display-player-team[^"]*"[^>]*>([^<]+)/);
-    const age = chunk.match(/class="time-since"[^>]*>([^<]+)/);
-    const vote = chunk.match(/class="vote-control-percent"[^>]*>([^<]+)/);
-    cards.push({
+// The Live Results page's analyst comments: one row per player, with the
+// comment in the last cell. The comment is the tooltip's title and the age
+// sits in its brackets; the analyst's name sits beside the mark.
+function analystComments(html) {
+  const comments = [];
+  for (const row of String(html).matchAll(/<tr class=''>([\s\S]*?)<\/tr>/g)) {
+    const cells = [...row[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((match) => match[1]);
+    const player = row[1].match(/playerinfo\.aspx\?i=(\d+)[^>]*>([^<]+)</i);
+    if (!player || cells.length < 2) continue;
+    const mark = cells[cells.length - 1].match(/title="([^"]+)"[\s\S]*?<i class="far fa-square">[\s\S]*?<\/i>\s*<\/span>&#160;([^<]*)</);
+    if (!mark) continue;
+    const age = mark[1].match(/\((\d+(?:\.\d+)?[dhmy])\)\s*$/);
+    const at = cells.findIndex((cell) => /playerinfo\.aspx/i.test(cell));
+    comments.push({
       id: player[1],
       name: plain(player[2]),
-      team: team ? plain(team[1]) : null,
-      user: user ? plain(user[1]) : null,
-      body: body ? plain(body[1]) : "",
-      age: age ? plain(age[1]) : null,
-      vote: vote ? plain(vote[1]) : null,
+      team: at >= 0 ? plain(cells[at + 1]) : null,
+      comment: (age ? mark[1].slice(0, age.index) : mark[1]).trim(),
+      analyst: plain(mark[2]),
+      age: age ? age[1] : null,
     });
   }
-  return cards;
+  return comments;
 }
 
 // The table's header cells carry links that post back to the Box Scores page.
@@ -1823,45 +1822,37 @@ const scoreLine = (game) => {
   return `${game.away.team}${points(game.away)} @ ${game.home.team}${points(game.home)}`;
 };
 
-// The card for one comment: the player, who wrote it, when, and the text.
-function commentCard(card) {
-  const row = div("cgm-comment");
-  const head = div("cgm-comment-head");
-  const player = div("cgm-comment-player");
-  const logo = teamLogo(card.team, "cgm-logo cgm-comment-logo");
+// One analyst comment: the player, the analyst, how long ago, and the comment.
+function analystCard(comment) {
+  const row = div("cgm-analyst");
+  const head = div("cgm-analyst-head");
+  const player = div("cgm-analyst-player");
+  const logo = teamLogo(comment.team, "cgm-logo cgm-analyst-logo");
   if (logo) player.append(logo);
-  player.append(document.createTextNode(card.name));
-  head.append(player, div("cgm-comment-meta", [card.user, card.age, card.vote].filter(Boolean).join(" · ")));
-  row.append(head, div("cgm-comment-body", card.body));
+  player.append(document.createTextNode(comment.name));
+  head.append(player, div("cgm-analyst-meta", [comment.analyst, comment.age].filter(Boolean).join(" · ")));
+  row.append(head, div("cgm-analyst-body", comment.comment));
   return row;
 }
 
 const readCache = () => {
   try {
-    const cached = JSON.parse(sessionStorage.getItem(COMMENTS_KEY));
-    return cached && Date.now() - cached.at < COMMENTS_TTL ? cached.cards : null;
+    const cached = JSON.parse(sessionStorage.getItem(RESULTS_KEY));
+    return cached && Date.now() - cached.at < RESULTS_TTL ? cached.comments : null;
   } catch { return null; }
 };
 
-// The site's comments page, once per tab per ten minutes.
-async function loadComments() {
+// The Live Results page, once per tab per ten minutes.
+async function loadAnalysts() {
   const cached = readCache();
   if (cached) return cached;
-  // The comments page is only readable from the site's own origin.
-  if (new URL(COMMENTS_URL, location.href).origin !== location.origin) return [];
-  const response = await fetch(pageURL(COMMENTS_URL), { credentials: "same-origin" });
-  if (!response.ok) throw new Error(`the comments page answered ${response.status}`);
-  const cards = commentCards(await response.text());
-  try { sessionStorage.setItem(COMMENTS_KEY, JSON.stringify({ at: Date.now(), cards })); } catch { /* storage blocked */ }
-  return cards;
-}
-
-// One player's own thread, read from the site's per-player view of the same
-// page. It is not cached: it is read once, on request.
-async function loadPlayerComments(id) {
-  const response = await fetch(pageURL(`${COMMENTS_URL}?i=${encodeURIComponent(id)}`), { credentials: "same-origin" });
-  if (!response.ok) throw new Error(`the comments page answered ${response.status}`);
-  return commentCards(await response.text());
+  // The page is only readable from the site's own origin.
+  if (new URL(RESULTS_URL, location.href).origin !== location.origin) return [];
+  const response = await fetch(pageURL(RESULTS_URL), { credentials: "same-origin" });
+  if (!response.ok) throw new Error(`the live results page answered ${response.status}`);
+  const comments = analystComments(await response.text());
+  try { sessionStorage.setItem(RESULTS_KEY, JSON.stringify({ at: Date.now(), comments })); } catch { /* storage blocked */ }
+  return comments;
 }
 
 // Open the box score sheet for a game. The board is the Box Scores page the
@@ -1888,9 +1879,9 @@ function openBox(game, board, opener) {
   const tableBox = document.createElement("div");
   tableBox.className = "cgm-box-table";
   tableBox.innerHTML = inert(table);
-  const comments = document.createElement("div");
-  comments.className = "cgm-box-comments";
-  body.append(tableBox, comments);
+  const notes = document.createElement("div");
+  notes.className = "cgm-box-notes";
+  body.append(tableBox, notes);
   sheet.append(head, body);
   overlay.append(sheet);
   document.body.append(overlay);
@@ -1903,45 +1894,44 @@ function openBox(game, board, opener) {
 
   const ids = new Set(gamePlayers(table).map((player) => player.id));
   const show = (heading, list, back) => {
-    comments.replaceChildren();
-    const label = div("cgm-box-comments-head", heading);
+    notes.replaceChildren();
+    const label = div("cgm-box-notes-head", heading);
     if (back) {
       const again = Object.assign(document.createElement("button"), { type: "button", className: "cgm-show-all", textContent: "← All this game's players" });
       again.addEventListener("click", back);
       label.append(again);
     }
-    comments.append(label);
+    notes.append(label);
     if (!list.length) {
-      comments.append(div("cgm-box-empty", "No comments about these players yet."));
+      notes.append(div("cgm-box-empty", "No analyst comment for these players."));
       return;
     }
-    for (const card of list) comments.append(commentCard(card));
+    for (const comment of list) notes.append(analystCard(comment));
   };
 
-  const gameComments = async () => {
+  const gameNotes = async () => {
     try {
-      const cards = await loadComments();
-      show("Comments about this game's players", cards.filter((card) => ids.has(card.id)));
+      const comments = await loadAnalysts();
+      show("Analyst comments on this game's players", comments.filter((comment) => ids.has(comment.id)));
     } catch (error) {
-      console.error("ClutchGM could not read the comments page", error);
-      show("Comments about this game's players", []);
+      console.error("ClutchGM could not read the live results page", error);
+      show("Analyst comments on this game's players", []);
     }
   };
 
-  // A player in the table opens that player's own thread. The link to the
-  // player's own page stays one click away, on the comment card.
+  // A player in the table opens that player's own analyst comment.
   for (const link of tableBox.querySelectorAll("a[href*='playerinfo.aspx' i]")) {
     link.addEventListener("click", (event) => {
       event.preventDefault();
       const id = new URL(link.href, location.href).searchParams.get("i");
       if (!id) return;
       const name = link.textContent.trim();
-      show(`Comments about ${name}`, []);
-      loadPlayerComments(id).then(
-        (cards) => show(`Comments about ${name}`, cards, () => gameComments()),
+      show(`Analyst comment on ${name}`, []);
+      loadAnalysts().then(
+        (comments) => show(`Analyst comment on ${name}`, comments.filter((comment) => comment.id === id), () => gameNotes()),
         (error) => {
-          console.error("ClutchGM could not read the comments page", error);
-          show(`Comments about ${name}`, [], () => gameComments());
+          console.error("ClutchGM could not read the live results page", error);
+          show(`Analyst comment on ${name}`, [], () => gameNotes());
         },
       );
     });
@@ -1961,10 +1951,10 @@ function openBox(game, board, opener) {
   overlay.hidden = false;
   document.documentElement.classList.add("cgm-lock");
   close.focus();
-  gameComments();
+  gameNotes();
   return overlay;
 }
-return { gameSection, gameTable, gamePlayers, commentCards, openBox };
+return { gameSection, gameTable, gamePlayers, analystComments, openBox };
 })();
 
 // ---- src/bbm-today.js
@@ -2368,14 +2358,16 @@ function tagStories(cards) {
 
 // The card opens with a byline row: headshot plus team logo, RotoWire-style.
 // Runs after the headshots land, so the images exist to move; skipped cards
-// keep the old row and still read fine.
+// keep the old row and still read fine. A player with no team has no logo to
+// move, but the headshot still belongs in the left rail: without a byline the
+// card keeps an empty first column and the picture stays beside the name.
 function buildBylines(root = document) {
   for (const card of root.querySelectorAll(".cgm-story:not(:has(.cgm-byline))")) {
     const head = card.querySelector(".cgm-id > .cgm-head");
+    if (!head) continue;
     const logo = card.querySelector(".display-player-team > img");
-    if (!head || !logo) continue;
     const byline = div("cgm-byline");
-    byline.append(head, logo);
+    byline.append(head, ...(logo ? [logo] : []));
     card.prepend(byline);
   }
 }
