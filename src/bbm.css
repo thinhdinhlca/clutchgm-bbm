@@ -288,11 +288,11 @@ html.cgm-bbm {
   .cgm-feed-days { align-items: center; display: inline-flex; gap: 8px; }
   .cgm-days-label { color: var(--cgm-faint); font-size: 12px; }
   .cgm-days { background: var(--cgm-surface); border: 1px solid var(--cgm-line); border-radius: 8px; color: var(--cgm-text); font-size: 12.5px; padding: 4px 8px; }
-  /* ---------- Live Matches: one compact card per league ----------
+  /* ---------- Matchup Monster: one compact card per league ----------
      The score line names its leader; each category chip keeps its full
      "ours–theirs" count in its tooltip. Dots carry the result colour so the
      text itself stays on the passing palette. */
-  .cgm-live-bar { align-items: center; display: flex; gap: 12px; margin: 0 0 12px; }
+  .cgm-live-bar { align-items: center; display: flex; gap: 12px; margin: 0 0 12px; max-width: 880px; }
   .cgm-live-stamp { color: var(--cgm-faint); font-size: 12px; }
   .cgm-live-bar .cgm-show-all { margin-top: 0; }
   .cgm-live-list { display: grid; gap: 0; max-width: 880px; }
@@ -316,7 +316,7 @@ html.cgm-bbm {
      One row per game: both sides with their logos, the scores, the tip time
      and the state. The side ahead is underlined, the way the live match board
      marks a leader. A game in progress carries a bar of the game played. */
-  .cgm-today-bar { align-items: center; display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 0 0 10px; }
+  .cgm-today-bar { align-items: center; display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 0 0 10px; max-width: 880px; }
   .cgm-today-when { font-size: 15px; font-weight: 800; letter-spacing: -0.005em; }
   .cgm-today-step { background: none; border: 1px solid var(--cgm-line); border-radius: 8px; color: var(--cgm-muted); cursor: pointer; font-size: 15px; line-height: 1; padding: 5px 12px; &:hover { color: var(--cgm-text); } }
   .cgm-today-stamp { color: var(--cgm-faint); font-size: 12px; margin-left: auto; }
@@ -1235,8 +1235,11 @@ html.cgm-bbm {
      One tab is visible at a time, so there is nothing to reflow; the tab bar
      itself just takes the width. */
   @media (max-width: 980px) {
-    .cgm-tabs .cgm-seg { display: flex; }
-    .cgm-tabs .cgm-seg-btn { flex: 1; padding-left: 8px; padding-right: 8px; }
+    .cgm-tabs .cgm-seg { display: flex; max-width: 100%; overflow-x: auto; }
+    /* The labels keep their own width and stay on one line: four labels of
+       different lengths wrapping differently read as a broken strip. The strip
+       scrolls sideways only when the window cannot hold all four. */
+    .cgm-tabs .cgm-seg-btn { flex: 0 0 auto; padding-left: 8px; padding-right: 8px; white-space: nowrap; }
     .cgm-match-score { flex-wrap: wrap; }
   }
 
@@ -1281,7 +1284,7 @@ html.cgm-bbm {
     .cgm-appbar .page-title-row-season { display: none; }
 
     .cgm-home { padding: 12px 10px 20px; }
-    .cgm-tabs .cgm-seg-btn { font-size: 12.5px; padding-left: 6px; padding-right: 6px; }
+    .cgm-tabs .cgm-seg-btn { font-size: 12.5px; padding-left: 4px; padding-right: 4px; }
     .cgm-today-stamp { margin-left: 0; }
     .cgm-today-meta { margin-left: 0; }
     .cgm-newshead { align-items: center; }

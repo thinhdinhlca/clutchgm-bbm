@@ -753,7 +753,7 @@ return { hiddenFields, pageURL, postFields };
 
 // ---- src/bbm-live.js
 const { leagueOptions, scoreboard, scoreLine, leagueBoards, renderLive } = (() => {
-// Live Matches tab: one compact card per league with the live H2H score.
+// Matchup Monster tab: one compact card per league with the live H2H score.
 // The matchup page shows one league at a time behind a postback league picker,
 // so a refresh walks every league with chained posts (each response carries
 // the next post's viewstate) and parses the scoreboard table. Leagues without
@@ -2271,7 +2271,7 @@ const { elapsedBucket, dayBucket, wordLabel, buildBylines, commentBodies, tweetF
 // everything at once. This rebuilds it as four tabs: Player News (a uniform
 // run of compact stories under elapsed-time headings), NBA Today (the day's
 // games with their live scores, read from the Box Scores page), User Comments
-// (the full list, bodies borrowed from the comments page), and Live Matches
+// (the full list, bodies borrowed from the comments page), and Matchup Monster
 // (one live scoreboard card per league). Nodes are moved, never cloned, so the
 // site's own postbacks keep working.
 
@@ -2829,7 +2829,7 @@ function buildHome() {
         { key: "news", label: "Player News" },
         { key: "today", label: "NBA Today" },
         { key: "comments", label: "User Comments" },
-        { key: "live", label: "Live Matches" },
+        { key: "live", label: "Matchup Monster" },
       ],
       pick,
       readTab(),
@@ -2841,6 +2841,11 @@ function buildHome() {
   row.remove();
 
   buildNews(found.news);
+  // The tab's own heading points at the site's All Player News page, which the
+  // redesign does not own; the news page carries the week, so that is where
+  // the reader goes.
+  const heading = found.news.querySelector(".cgm-newshead a");
+  if (heading) heading.href = "playernews.aspx";
   headRow(found.comments, found.comments?.querySelector(".bm-custom-select"));
   if (found.comments) {
     for (const card of found.comments.querySelectorAll(".comment-card")) {
