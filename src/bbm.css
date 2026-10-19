@@ -271,9 +271,14 @@ html.cgm-bbm {
   .cgm-tabs .cgm-seg { background: none; border-bottom: 1px solid var(--cgm-line); border-radius: 0; display: inline-flex; gap: 4px; padding: 0; }
   .cgm-tabs .cgm-seg-btn { border: 0; border-bottom: 2px solid transparent; border-radius: 0; font-size: 14px; margin-bottom: -1px; padding: 10px 22px; &[aria-pressed="true"] { background: none; border-bottom-color: var(--cgm-accent); box-shadow: none; } }
   .cgm-panel[hidden] { display: none !important; }
-  /* The news column stays readable at full width: the note lines stop before
-     they stretch across a wide window. */
-  .cgm-news .cgm-stories { max-width: 880px; }
+  /* The news feed uses the full home width. Wide windows pair the compact
+     cards two across with a wide gutter and generous row air between them,
+     the day headings spanning both columns. Narrow windows keep one column. */
+  .cgm-news .cgm-stories { max-width: none; }
+  @media (min-width: 1100px) {
+    .cgm-news .cgm-stories { column-gap: 64px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); row-gap: 24px; }
+    .cgm-news .cgm-dayhead { grid-column: 1 / -1; }
+  }
   .cgm-games { margin-top: 26px; max-width: 880px; }
   /* ---------- Live Matches: one compact card per league ----------
      The score line names its leader; each category chip keeps its full
@@ -310,9 +315,9 @@ html.cgm-bbm {
     margin: 0;
     a { color: inherit !important; }
   }
-  /* The news head carries the site's own link to the full feed beside the
-     status chips; the chips wrap under it when the column is narrow. */
-  .cgm-newshead { align-items: center; display: flex; flex-wrap: wrap; gap: 10px 18px; justify-content: space-between; margin: 0 0 12px; }
+  /* The news head keeps the site's own link to the full feed beside the
+     status chips; the chips sit right next to the heading on the left. */
+  .cgm-newshead { align-items: center; display: flex; flex-wrap: wrap; gap: 10px 14px; justify-content: flex-start; margin: 0 0 12px; }
   .cgm-newshead h3 {
     color: var(--cgm-text);
     font-size: 17px;
@@ -381,47 +386,39 @@ html.cgm-bbm {
   .cgm-newsempty { color: var(--cgm-faint); font-size: 13px; padding: 14px 0; }
   .cgm-dayhead { color: var(--cgm-faint); font-size: 10.5px; font-weight: 800; letter-spacing: 0.08em; margin: 16px 0 4px; text-transform: uppercase; }
   .cgm-stories > .cgm-dayhead:first-child { margin-top: 2px; }
-  /* player news: a byline row (headshot plus team logo), the name line, the
-     full note, and the linked tweet when the story has one. Stories are flat
-     rows on the page, never cards: no fills, no borders, no radius. */
+  /* player news: a headshot rail on the left, the name line, the full note,
+     and the linked tweet when the story has one, all in one narrow column on
+     the right. Stories are flat rows on the page, never cards: no fills, no
+     borders, no radius. Every card reads the same; there is no lead. */
   .cgm-story {
     background: none !important;
     border: 0;
     border-radius: 0;
+    cursor: pointer;
+    padding: 12px 2px;
   }
+  /* A story has no surface of its own, so the hover is a faint wash. */
+  .cgm-story:hover { background: color-mix(in srgb, var(--cgm-text) 5%, transparent) !important; }
   .news-card:has(.news-card-test-header) {
     box-shadow: none !important;
     display: grid;
-    gap: 8px 14px;
-    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 2px 14px;
+    grid-template-columns: 52px minmax(0, 1fr);
     margin: 0;
     padding: 0;
     position: relative;
-    > .cgm-byline { align-items: center; display: flex; gap: 12px; grid-area: 1 / 1; }
-    > .news-card-test-header { align-self: center; display: flex; justify-content: flex-end; margin: 0; position: static; grid-area: 1 / 2; }
-    > .display-player { align-items: center; display: flex; flex-wrap: wrap; gap: 6px 10px; grid-area: 2 / 1 / 3 / 3; min-width: 0; }
-    > .news-card-test-body-row { grid-column: 1 / -1; line-height: 1.5; margin-top: 0; }
-    > .news-card-bottom-row { grid-column: 1 / -1; }
+    > .cgm-byline { align-items: center; display: flex; flex-direction: column; gap: 6px; grid-column: 1; grid-row: 1 / span 4; justify-content: flex-start; padding-top: 2px; }
+    > .news-card-test-header { align-self: start; display: flex; grid-column: 2; grid-row: 1; justify-content: flex-end; margin: 0; }
+    > .display-player { align-items: center; display: flex; flex-wrap: wrap; gap: 4px 10px; grid-column: 2; grid-row: 2; min-width: 0; }
+    > .news-card-test-body-row { grid-column: 2; grid-row: 3; line-height: 1.5; margin-top: 0; }
+    > .news-card-bottom-row { grid-column: 2; grid-row: 4; }
   }
-  .cgm-byline .cgm-head { height: 48px; width: 48px; }
-  .cgm-byline span.cgm-head.cgm-fallback { font-size: 14px; }
-  .cgm-byline .cgm-logo { height: 38px; width: auto; }
-  .cgm-story.cgm-brief { cursor: pointer; padding: 14px 2px; }
-  /* A brief has no surface of its own, so the hover is a faint wash. */
-  .cgm-story.cgm-brief:hover { background: color-mix(in srgb, var(--cgm-text) 5%, transparent) !important; }
-  /* The lead is the one story of the filter with a larger byline; the grid is
-     shared so every card reads the same way, with air instead of a box. */
-  .cgm-story.cgm-lead {
-    padding: 14px 2px 18px;
-  }
-  .cgm-story.cgm-lead .cgm-byline .cgm-head { height: 72px; width: 72px; }
-  .cgm-story.cgm-lead .cgm-byline span.cgm-head.cgm-fallback { font-size: 20px; }
-  .cgm-story.cgm-lead .cgm-byline .cgm-logo { height: 44px; }
-  .cgm-story .news-card-test-body { color: var(--cgm-muted); }
-  .cgm-story.cgm-brief .news-card-test-body { font-size: 14px; }
-  .cgm-story.cgm-brief:hover .news-card-test-body,
+  .cgm-byline .cgm-head { height: 44px; width: 44px; }
+  .cgm-byline span.cgm-head.cgm-fallback { font-size: 13px; }
+  .cgm-byline .cgm-logo { height: 28px; width: auto; }
+  .cgm-story .news-card-test-body { color: var(--cgm-muted); font-size: 14px; }
+  .cgm-story:hover .news-card-test-body,
   .cgm-story.cgm-open .news-card-test-body { color: var(--cgm-text); }
-  .cgm-story.cgm-lead .news-card-test-body { color: var(--cgm-text); font-size: 15px; }
   /* The site floats this group on the card's corner (absolute at every width,
      and at 520 px and below a static group with a -16 px left / -12 px top
      margin). Our pill rides right after the name, so it stays in flow with no
@@ -434,14 +431,12 @@ html.cgm-bbm {
   .display-player-name { white-space: nowrap; }
   /* A name longer than its card must wrap rather than run past the card edge. */
   .news-card .display-player-name { white-space: normal; }
-  .cgm-story .display-player-name { color: var(--cgm-accent) !important; font-weight: 800; letter-spacing: 0.01em; text-transform: uppercase; }
-  .cgm-story.cgm-brief .display-player-name { font-size: 17px !important; line-height: 1.25; }
-  .cgm-story.cgm-lead .display-player-name { font-size: 26px !important; line-height: 1.15; }
+  .cgm-story .display-player-name { color: var(--cgm-accent) !important; font-size: 17px !important; font-weight: 800; letter-spacing: 0.01em; line-height: 1.25; text-transform: uppercase; }
   .comment-card .display-player-name { font-size: 14px !important; }
   .cgm-story .display-player-team, .cgm-story .display-player-pos { font-size: 11.5px; }
-  .cgm-story.cgm-lead .display-player-team, .cgm-story.cgm-lead .display-player-pos { font-size: 12.5px; }
-  /* The linked tweet reads as a quoted follow-up under the note. */
-  .cgm-tweet { border-left: 2px solid var(--cgm-line); color: var(--cgm-muted); font-size: 13px; grid-column: 1 / -1; line-height: 1.5; padding-left: 10px; }
+  /* The linked tweet reads as a quoted follow-up under the note, in the same
+     narrow column as the note. */
+  .cgm-tweet { border-left: 2px solid var(--cgm-line); color: var(--cgm-muted); font-size: 13px; grid-column: 2; line-height: 1.5; padding-left: 10px; }
   .cgm-tweet-via { color: var(--cgm-faint); font-size: 11px; font-weight: 700; margin-bottom: 2px; }
   .news-card-bottom-row { margin: 6px 0 0; padding: 0; &:not(:has(.news-card-counts > *)) { display: none; } }
   /* The status word is a pill on a light tint of its own colour: the site's own
@@ -467,7 +462,6 @@ html.cgm-bbm {
     text-transform: uppercase;
     white-space: nowrap;
   }
-  .cgm-story.cgm-lead .news-card-test-status-corner { font-size: 11.5px; padding: 3px 12px; }
   .news-card-test-header-left { align-items: center; display: flex; gap: 10px; }
   /* The priority word becomes a dot in its own level colour, which the site
      already sets inline on the element. */
@@ -1224,12 +1218,14 @@ html.cgm-bbm {
     .cgm-appbar .page-title-row-season { display: none; }
 
     .cgm-home { padding: 12px 10px 20px; }
-    .cgm-newshead { align-items: flex-start; }
+    .cgm-newshead { align-items: center; }
     .cgm-newshead h3 { font-size: 16px; }
-    .cgm-story.cgm-brief .news-card-test-status-corner { font-size: 9.5px; padding: 1px 6px; }
-    .cgm-story.cgm-lead { padding: 12px 2px 14px; }
-    .cgm-story.cgm-lead .display-player-name { font-size: 21px !important; }
-    .cgm-story.cgm-lead .cgm-head { height: 52px; width: 52px; }
-    .cgm-story.cgm-lead > .news-card-test-body-row { padding-left: 0; }
+    .cgm-news .cgm-stories { display: block; }
+    .cgm-story .news-card-test-status-corner { font-size: 9.5px; padding: 1px 6px; }
+    .cgm-story { padding: 10px 2px; }
+    .news-card:has(.news-card-test-header) { gap: 2px 10px; grid-template-columns: 40px minmax(0, 1fr); }
+    .cgm-byline .cgm-head { height: 36px; width: 36px; }
+    .cgm-byline .cgm-logo { height: 22px; }
+    .cgm-story .display-player-name { font-size: 15px !important; }
   }
 }

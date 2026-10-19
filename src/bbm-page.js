@@ -994,9 +994,9 @@ return { mineIDs };
 // ---- src/bbm-home.js
 const { elapsedBucket, wordLabel, buildBylines, commentBodies, tweetFromOEmbed, tweetEndpoints, buildNews, buildGames, buildHome } = (() => {
 // The home page ships its widgets as a row of equal cards that each show
-// everything at once. This rebuilds it as three tabs: Player News (the newest
-// story leads, the rest are briefs under elapsed-time headings, with Today's
-// Games below), User Comments (the full list, bodies borrowed from the
+// everything at once. This rebuilds it as three tabs: Player News (a uniform
+// run of compact stories under elapsed-time headings, with Today's Games
+// below), User Comments (the full list, bodies borrowed from the
 // comments page), and Live Matches (one live scoreboard card per league).
 // Nodes are moved, never cloned, so the site's own postbacks keep working.
 
@@ -1026,7 +1026,8 @@ function dropStraySpace(host) {
   }
 }
 
-// Four stories still read as a list, so a lead only appears above that count.
+// Every card reads the same: no lead, so the first stories show instead of
+// one story dwarfing the rest. The list shows the newest few until asked.
 const NEWS_VISIBLE = 4;
 const COMMENTS_VISIBLE = 4;
 
@@ -1286,11 +1287,10 @@ function storyChips(cards, words, onPick) {
   return chips;
 }
 
-// What the active filter shows: the newest story leads, the rest are briefs.
+// What the active filter shows: the newest few, uniform, until "Show all".
 function storyParts(shown, all) {
-  const lead = shown.length >= NEWS_VISIBLE ? shown[0] : null;
-  const briefs = lead ? shown.slice(1) : shown;
-  return { lead, briefs, briefed: new Set(briefs.slice(0, all || !lead ? briefs.length : NEWS_VISIBLE - 1)) };
+  const listed = all ? shown : shown.slice(0, NEWS_VISIBLE);
+  return { listed: new Set(listed) };
 }
 
 // A heading sits above the first brief of each elapsed bucket.
@@ -1306,16 +1306,14 @@ function paintHeadings(list, cards) {
 
 function paint(cards, list, ui, state) {
   const shown = cards.filter((card) => state.word === "all" || card.dataset.cgmWord === state.word);
-  const { lead, briefs, briefed } = storyParts(shown, state.all);
-  // The lead and the first few briefs are the whole feed until "Show all"; any
-  // other story is out of the list, not merely unstyled.
-  const visible = new Set([...(lead ? [lead] : []), ...briefed]);
+  const { listed } = storyParts(shown, state.all);
+  // The feed is one uniform run until "Show all"; any other story is out of
+  // the list, not merely unstyled.
   for (const card of cards) {
-    card.classList.toggle("cgm-gone", !visible.has(card));
-    card.classList.toggle("cgm-lead", card === lead);
-    card.classList.toggle("cgm-brief", briefed.has(card));
+    card.classList.toggle("cgm-gone", !listed.has(card));
+    card.classList.remove("cgm-lead", "cgm-brief");
   }
-  paintHeadings(list, briefs.slice(0, briefed.size));
+  paintHeadings(list, shown.filter((card) => listed.has(card)));
   ui.empty.hidden = shown.length > 0;
   ui.more.hidden = shown.length <= NEWS_VISIBLE;
   ui.more.textContent = state.all ? "Show fewer" : `Show all ${shown.length} stories`;
