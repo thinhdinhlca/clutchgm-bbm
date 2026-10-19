@@ -1942,7 +1942,8 @@ function renderToday(panel) {
     refresh.disabled = false;
     back.disabled = false;
     next.disabled = false;
-    today.disabled = boardDate(html) ? boardNumber(boardDate(html)) === todayNumber() : false;
+    const date = boardDate(html);
+    today.disabled = !date || boardNumber(date) === todayNumber();
   };
 
   refresh.addEventListener("click", () => guard(load));
