@@ -256,30 +256,46 @@ html.cgm-bbm {
     -webkit-text-fill-color: var(--cgm-text);
   }
 
-  /* ---------- Home: a news-led page ----------
-     Player News is the main column, Today's Games a narrow rail beside it, the
-     comments follow the news, and the two reference lists share one band at the
-     end. The page is capped so a wide window does not stretch the note lines. */
+  /* ---------- Home tabs: news, comments and live matches share the page ----------
+     One control picks the section and the page shows only it, so each section
+     gets the full width instead of a squeezed column. */
   .cgm-home {
-    align-items: start;
-    display: grid;
-    gap: 26px 28px;
-    grid-template-columns: minmax(0, 1fr) 354px;
     margin: 0 auto;
     max-width: 1500px;
     padding: 16px 12px 24px;
   }
-  .cgm-home .cgm-main { display: grid; gap: 26px; grid-area: 1 / 1; min-width: 0; }
-  .cgm-home .cgm-rail { grid-area: 1 / 2; min-width: 0; }
-  .cgm-home .cgm-band {
-    border-top: 1px solid var(--cgm-line);
-    display: grid;
-    gap: 26px 28px;
-    grid-column: 1 / -1;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    padding-top: 22px;
-  }
   .cgm-home .card-based { background: none; border: 0; border-radius: 0; box-shadow: none; margin: 0; max-height: none; overflow: visible; padding: 0; }
+  .cgm-tabs { margin: 0 0 14px; }
+  .cgm-tabs .cgm-seg { border-radius: 10px; display: inline-flex; gap: 3px; padding: 3px; }
+  .cgm-tabs .cgm-seg-btn { font-size: 14px; padding: 8px 22px; }
+  .cgm-panel[hidden] { display: none !important; }
+  /* The news column stays readable at full width: the note lines stop before
+     they stretch across a wide window. */
+  .cgm-news .cgm-stories { max-width: 880px; }
+  .cgm-games { margin-top: 26px; max-width: 880px; }
+  /* ---------- Live Matches: one compact card per league ----------
+     The score line names its leader; each category chip keeps its full
+     "ours–theirs" count in its tooltip. Dots carry the result colour so the
+     text itself stays on the passing palette. */
+  .cgm-live-bar { align-items: center; display: flex; gap: 12px; margin: 0 0 12px; }
+  .cgm-live-stamp { color: var(--cgm-faint); font-size: 12px; }
+  .cgm-live-bar .cgm-show-all { margin-top: 0; }
+  .cgm-live-list { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+  .cgm-match { background: var(--cgm-surface); border: 1px solid var(--cgm-line); border-radius: 10px; padding: 12px 14px; }
+  .cgm-match-head { align-items: baseline; display: flex; gap: 10px; justify-content: space-between; margin-bottom: 8px; }
+  .cgm-match-league { color: var(--cgm-faint); font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+  .cgm-match-head a { font-size: 12px; white-space: nowrap; }
+  .cgm-match-score { align-items: baseline; display: flex; gap: 10px; }
+  .cgm-match-team { flex: 1; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cgm-match-team:last-child { text-align: right; }
+  .cgm-match-tally { font-size: 17px; font-weight: 800; white-space: nowrap; }
+  .cgm-ahead { text-decoration: underline; text-underline-offset: 3px; }
+  .cgm-match-cats { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+  .cgm-cat { align-items: center; border: 1px solid var(--cgm-line); border-radius: 999px; color: var(--cgm-muted); display: inline-flex; font-size: 11px; font-weight: 700; gap: 5px; padding: 1px 8px; &::before { border-radius: 50%; content: ""; height: 6px; width: 6px; } }
+  .cgm-cat--won::before { background: #22c55e; }
+  .cgm-cat--lost::before { background: #f87171; }
+  .cgm-cat--tied::before { background: var(--cgm-faint); }
+  .cgm-match-note { color: var(--cgm-faint); font-size: 12.5px; }
   /* Every section labels its own head row, so the site's own link to the full
      list stays clickable. */
   .cgm-home .cgm-blockhead { align-items: center; display: flex; flex-wrap: wrap; gap: 8px 16px; justify-content: space-between; margin: 0 0 10px; }
@@ -362,13 +378,6 @@ html.cgm-bbm {
   .cgm-newsempty { color: var(--cgm-faint); font-size: 13px; padding: 14px 0; }
   .cgm-dayhead { color: var(--cgm-faint); font-size: 10.5px; font-weight: 800; letter-spacing: 0.08em; margin: 16px 0 4px; text-transform: uppercase; }
   .cgm-stories > .cgm-dayhead:first-child { margin-top: 2px; }
-
-  /* article rows in the closing band */
-  .cgm-band .news-card:not(:has(.news-card-test-header)) {
-    background: none; border: 0; border-bottom: 1px solid var(--cgm-line-soft); border-radius: 0; margin: 0; padding: 9px 0;
-    a { color: var(--cgm-text); font-size: 13px; font-weight: 600; &:hover { color: var(--cgm-accent); text-decoration: none; } }
-    span { color: var(--cgm-faint); font-size: 11.5px; white-space: nowrap; }
-  }
   /* player news: the newest story of the active filter leads, the rest are
      brief rows that open in place */
   .news-card:has(.news-card-test-header) {
@@ -495,7 +504,7 @@ html.cgm-bbm {
   .cgm-home .comment-card-btn { background: none; border: 0; color: var(--cgm-faint); font-size: 11.5px; padding: 2px 0; }
   /* today's games: one folded row per game */
   .daily-status-updates { font-size: 12.5px; }
-  .cgm-home .cgm-rail .daily-status-updates { background: var(--cgm-surface); border: 1px solid var(--cgm-line); border-radius: 10px; padding: 12px 14px; }
+  .cgm-home .cgm-games .daily-status-updates { background: var(--cgm-surface); border: 1px solid var(--cgm-line); border-radius: 10px; padding: 12px 14px; }
   .cgm-game {
     border-top: 1px solid var(--cgm-line-soft);
     > summary {
@@ -515,10 +524,6 @@ html.cgm-bbm {
     &[open] > summary::before { transform: rotate(45deg); }
     > div:not(summary) { padding: 1px 0 2px 16px; }
   }
-  /* roster changes: five rows in the closing band, with a sideways scroll of
-     its own so a wide row cannot push the page sideways */
-  .cgm-tablebox { min-width: 0; overflow-x: auto; }
-  .cgm-band .rankings-table { width: 100%; th { position: static; } td { border-bottom: 1px solid var(--cgm-line-soft); padding: 5px 6px; } }
   .cgm-show-all { background: none; border: 0; color: var(--cgm-accent); cursor: pointer; font-size: 12px; font-weight: 600; margin-top: 6px; padding: 4px 0; }
 
   /* depth charts: team cards */
@@ -1185,20 +1190,13 @@ html.cgm-bbm {
   /* A board's column must not grow to the table's width and push the page sideways. */
   .row:has(.cgm-board) { min-width: 0; > [class*="col"] { flex: 0 1 auto; max-width: 100%; min-width: 0; } }
 
-  /* ---------- Narrow: the news column takes the width ----------
-     Under a two-column fit the rail drops below the news and the comments
-     follow it, which is also the order the phone reads: news, games, comments,
-     then the two reference lists. */
+  /* ---------- Narrow: tabs go full width ----------
+     One tab is visible at a time, so there is nothing to reflow; the tab bar
+     itself just takes the width. */
   @media (max-width: 980px) {
-    .cgm-home { grid-template-columns: minmax(0, 1fr); }
-    .cgm-home .cgm-main { display: contents; }
-    .cgm-home .cgm-news { order: 1; }
-    .cgm-home .cgm-rail { grid-area: auto / 1; order: 2; }
-    .cgm-home .cgm-comments { order: 3; }
-    .cgm-home .cgm-band { grid-column: 1; order: 4; }
-  }
-  @media (max-width: 760px) {
-    .cgm-home .cgm-band { grid-template-columns: minmax(0, 1fr); }
+    .cgm-tabs .cgm-seg { display: flex; }
+    .cgm-tabs .cgm-seg-btn { flex: 1; padding-left: 8px; padding-right: 8px; }
+    .cgm-match-score { flex-wrap: wrap; }
   }
 
   /* ---------- Phone: the bar folds behind the site's own menu button ----------
@@ -1242,7 +1240,6 @@ html.cgm-bbm {
     .cgm-appbar .page-title-row-season { display: none; }
 
     .cgm-home { padding: 12px 10px 20px; }
-    .cgm-home .cgm-main { gap: 22px; }
     .cgm-newshead { align-items: flex-start; }
     .cgm-newshead h3 { font-size: 16px; }
     .cgm-story.cgm-brief .news-card-test-status-corner { font-size: 9.5px; padding: 1px 6px; }
