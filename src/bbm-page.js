@@ -1702,10 +1702,14 @@ function statusPill(value) {
 // The depth link may sit bare in the item or wrapped in a value span. Only a
 // badge item holding nothing but that link folds into the team word; anything
 // else stays a regular action.
-// Labeled badge items split three ways: the status fact joins the name, the
-// positions fact is already shown as pills, and the rest become table pairs.
-// Unlabeled items (links, the watch button) are page actions, except a lone
-// depth link: it folds into the team word in the sub line.
+
+// Badge text sometimes repeats itself across sibling nodes ("ankleankle").
+// Drop any chunk already contained in another chunk and join the rest.
+function dedupeChunks(chunks) {
+  const unique = [...new Set(chunks)];
+  return unique.filter((chunk) => !unique.some((other) => other !== chunk && other.includes(chunk)));
+}
+
 function depthAnchor(item, rest) {
   const anchor = rest.reduce((found, node) => found || (node.tagName === "A" ? node : node.querySelector?.("a") || null), null);
   if (!anchor || !/depth chart/i.test(text(anchor))) return null;
@@ -1730,7 +1734,7 @@ function collectBadge(badge) {
       continue;
     }
     if (/status/i.test(label) && !/questionable|games/i.test(label)) {
-      status = rest.map(text).filter(Boolean).join(" ") || text(item);
+      status = dedupeChunks(rest.map(text).filter(Boolean)).join(" ") || text(item);
       continue;
     }
     if (/positions? played/i.test(label)) continue;
@@ -1833,23 +1837,42 @@ function buildHero(h1, badge) {
   return { hero, buttons };
 }
 
-// One toolbox card holds the section toggles as a single segmented bar. The
-// sections the reader always wants are expanded; the custom-comment toggle
-// and its block go away entirely.
-const ALWAYS_OPEN = [/user comments/i, /tracked leagues/i, /recent news/i];
+// One toolbox card holds the section toggles as a single segmented tab bar.
+// User comments start open; picking another tab closes the current one. The
+// custom-comment toggle and its block go away entirely.
 
 function syncPill(pill, toggle) {
   const target = document.querySelector(toggle.getAttribute("data-target"));
   pill.classList.toggle("cgm-on", !!target?.classList.contains("show"));
 }
 
+// Sections behave as tabs: one open at a time, so the open section gets the
+// whole column. A pinned section stays open. Clicking a tab also scrolls to
+// its section.
+function closeOthers(current) {
+  for (const toggle of [...document.querySelectorAll('.cgm-toolbox [data-toggle="collapse"]')]) {
+    if (toggle === current) continue;
+    if (toggle.closest(".cgm-section")?.querySelector('[aria-pressed="true"]')) continue;
+    const target = document.querySelector(toggle.getAttribute("data-target"));
+    if (!target || !target.classList.contains("show")) continue;
+    target.classList.remove("show", "collapsing");
+    target.style.height = "";
+    toggle.setAttribute("aria-expanded", "false");
+    toggle.closest(".cgm-section")?.classList.remove("cgm-on");
+  }
+}
+
 function watchToggle(pill, toggle) {
   syncPill(pill, toggle);
-  toggle.addEventListener("click", () => {
+  toggle.addEventListener("click", (event) => {
     const target = document.querySelector(toggle.getAttribute("data-target"));
-    if (target && !target.classList.contains("show")) {
-      setTimeout(() => target.scrollIntoView({ behavior: "smooth", block: "start" }), 120);
+    if (target && target.classList.contains("show")) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
     }
+    closeOthers(toggle);
+    if (target) setTimeout(() => target.scrollIntoView({ behavior: "smooth", block: "start" }), 120);
     setTimeout(() => syncPill(pill, toggle), 420);
   });
 }
@@ -1879,11 +1902,12 @@ function moveToggles(chips) {
   if (segments.children.length) chips.append(segments);
 }
 
+// One tab starts open: user comments. The rest stay shut until picked.
 function expandPinned(chips) {
   for (const toggle of [...chips.querySelectorAll('[data-toggle="collapse"]')]) {
-    const target = toggle.getAttribute("data-target");
-    if (!target || !ALWAYS_OPEN.some((pattern) => pattern.test(text(toggle)))) continue;
-    document.querySelector(target)?.classList.add("show");
+    const target = document.querySelector(toggle.getAttribute("data-target"));
+    if (!target || !/user comments/i.test(text(toggle))) continue;
+    target.classList.add("show");
     toggle.setAttribute("aria-expanded", "true");
     toggle.closest(".cgm-section")?.classList.add("cgm-on");
   }
