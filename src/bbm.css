@@ -256,29 +256,51 @@ html.cgm-bbm {
     -webkit-text-fill-color: var(--cgm-text);
   }
 
-  /* ---------- Home: three columns, one scroll ---------- */
+  /* ---------- Home: a news-led page ----------
+     Player News is the main column, Today's Games a narrow rail beside it, the
+     comments follow the news, and the two reference lists share one band at the
+     end. The page is capped so a wide window does not stretch the note lines. */
   .cgm-home {
     align-items: start;
     display: grid;
-    gap: 28px;
-    grid-template-columns: minmax(250px, 0.9fr) minmax(420px, 1.8fr) minmax(280px, 1fr);
+    gap: 26px 28px;
+    grid-template-columns: minmax(0, 1fr) 354px;
+    margin: 0 auto;
+    max-width: 1500px;
     padding: 16px 12px 24px;
-    @media (max-width: 1180px) { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); .cgm-col-side { grid-column: 1 / -1; grid-row: 2; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); } }
-    @media (max-width: 760px) { grid-template-columns: minmax(0, 1fr); }
   }
-  .cgm-col { display: grid; gap: 26px; min-width: 0; > [class*="col"] { margin: 0 !important; max-width: none !important; min-width: 0 !important; padding: 0 !important; width: auto !important; } }
-  .cgm-col .card-based, .cgm-col .daily-status-updates {
-    background: none; border: 0; border-radius: 0; box-shadow: none; margin: 0; max-height: none; overflow: visible; padding: 0;
+  .cgm-home .cgm-main { display: grid; gap: 26px; grid-area: 1 / 1; min-width: 0; }
+  .cgm-home .cgm-rail { grid-area: 1 / 2; min-width: 0; }
+  .cgm-home .cgm-band {
+    border-top: 1px solid var(--cgm-line);
+    display: grid;
+    gap: 26px 28px;
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding-top: 22px;
   }
-  .cgm-col .card-based h3, .cgm-col .card-based h5 {
-    color: var(--cgm-muted);
-    font-size: 11.5px;
+  .cgm-home .card-based { background: none; border: 0; border-radius: 0; box-shadow: none; margin: 0; max-height: none; overflow: visible; padding: 0; }
+  /* Every section labels its own head row, so the site's own link to the full
+     list stays clickable. */
+  .cgm-home .cgm-blockhead { align-items: center; display: flex; flex-wrap: wrap; gap: 8px 16px; justify-content: space-between; margin: 0 0 10px; }
+  .cgm-home .cgm-blockhead h3 {
+    color: var(--cgm-text);
+    font-size: 13px;
     font-weight: 800;
-    letter-spacing: 0.08em;
+    letter-spacing: -0.005em;
     margin: 0;
-    padding: 0;
-    text-transform: uppercase;
-    a { color: inherit; pointer-events: none; }
+    a { color: inherit !important; }
+  }
+  /* The news head carries the site's own link to the full feed beside the
+     status chips; the chips wrap under it when the column is narrow. */
+  .cgm-newshead { align-items: center; display: flex; flex-wrap: wrap; gap: 10px 18px; justify-content: space-between; margin: 0 0 12px; }
+  .cgm-newshead h3 {
+    color: var(--cgm-text);
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    margin: 0;
+    a { color: inherit !important; }
   }
 
   /* ---------- Disclosure: folding sections, limited lists, segmented filters ---------- */
@@ -324,39 +346,82 @@ html.cgm-bbm {
     padding: 4px 11px;
     &[aria-pressed="true"] { background: var(--cgm-surface); box-shadow: 0 1px 2px rgb(0 0 0 / 0.18); color: var(--cgm-text); }
   }
-  .cgm-newsbar { align-items: center; display: flex; flex-wrap: wrap; gap: 10px 14px; justify-content: space-between; padding: 8px 0 4px; label { color: var(--cgm-muted); font-size: 12px; margin: 0 0 0 4px; } }
+  .cgm-newsbar { align-items: center; display: flex; flex-wrap: wrap; gap: 8px 14px; label { color: var(--cgm-muted); font-size: 12px; margin: 0 0 0 4px; } }
   .cgm-mine { align-items: center; display: inline-flex; }
+  /* The count chips reuse the site-wide chip shape; the news bar only changes
+     how one rests, so the live filter reads chosen and the others read quiet. */
+  .cgm-newsbar .cgm-chips { display: inline-flex; flex: 0 1 auto; gap: 4px; }
+  .cgm-newsbar .cgm-chip {
+    background: none;
+    color: var(--cgm-muted);
+    font-size: 12px;
+    font-weight: 600;
+    &:hover { border-color: var(--cgm-accent); color: var(--cgm-text); }
+    &[aria-pressed="true"] { background: var(--cgm-accent-soft); border-color: var(--cgm-accent); color: var(--cgm-text); }
+  }
+  .cgm-newsempty { color: var(--cgm-faint); font-size: 13px; padding: 14px 0; }
+  .cgm-dayhead { color: var(--cgm-faint); font-size: 10.5px; font-weight: 800; letter-spacing: 0.08em; margin: 16px 0 4px; text-transform: uppercase; }
+  .cgm-stories > .cgm-dayhead:first-child { margin-top: 2px; }
 
-  /* article rows */
-  .cgm-col .news-card:not(:has(.news-card-test-header)) {
+  /* article rows in the closing band */
+  .cgm-band .news-card:not(:has(.news-card-test-header)) {
     background: none; border: 0; border-bottom: 1px solid var(--cgm-line-soft); border-radius: 0; margin: 0; padding: 9px 0;
     a { color: var(--cgm-text); font-size: 13px; font-weight: 600; &:hover { color: var(--cgm-accent); text-decoration: none; } }
     span { color: var(--cgm-faint); font-size: 11.5px; white-space: nowrap; }
   }
-  /* player news */
+  /* player news: the newest story of the active filter leads, the rest are
+     brief rows that open in place */
   .news-card:has(.news-card-test-header) {
-    background: color-mix(in srgb, var(--cgm-status, var(--cgm-line)) 13%, var(--cgm-surface)) !important;
-    border: 1px solid color-mix(in srgb, var(--cgm-status, var(--cgm-line)) 28%, var(--cgm-line));
-    border-radius: 8px;
     align-items: center;
     box-shadow: none !important;
     display: flex;
     flex-wrap: wrap;
     gap: 4px 8px;
-    margin: 0 0 6px;
-    padding: 12px;
+    margin: 0;
+    padding: 0;
     position: relative;
     /* The card's own width decides whether the meta fits beside the name, so
        the card is its own size container. */
     container-type: inline-size;
-    /* The player name must start at the same x on every card. The status pill
+    /* The player name must start at the same x on every brief. The status pill
        holds a fixed column and the player block follows it, so the name no
        longer depends on how wide the source, time and level text happen to be.
        The meta group is last in visual order, so its auto margin takes the
        slack and it still lands on the card's right edge. */
-    > .display-player { flex: 0 1 auto; min-width: 0; order: 2; }
+    > .display-player { align-items: baseline; display: inline-flex; flex: 0 1 auto; flex-wrap: wrap; gap: 6px; min-width: 0; order: 2; }
   }
-  .news-card-test-corner-group { flex: 0 0 92px; order: 1; position: static; }
+  .cgm-story.cgm-brief { cursor: pointer; padding: 10px 2px 11px; }
+  /* A brief keeps the site's own status tint, so the hover has to outrank that
+     inline colour to be seen at all. */
+  .cgm-story.cgm-brief:hover { background: color-mix(in srgb, var(--cgm-text) 7%, transparent) !important; }
+  /* The lead is the one story of the filter with room for a full note and a
+     large headshot; it is a grid so each piece keeps its own place however long
+     the note runs. */
+  .cgm-story.cgm-lead {
+    background: color-mix(in srgb, var(--cgm-status, var(--cgm-line)) 10%, var(--cgm-surface)) !important;
+    border: 1px solid color-mix(in srgb, var(--cgm-status, var(--cgm-line)) 26%, var(--cgm-line));
+    border-radius: 12px;
+    column-gap: 14px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 16px 18px 18px;
+    row-gap: 8px;
+    > .news-card-test-corner-group { grid-area: 1 / 1; }
+    > .news-card-test-header { align-self: center; grid-area: 1 / 2; justify-self: end; margin: 0; }
+    > .display-player { align-items: center; display: flex; flex-wrap: wrap; gap: 10px; grid-area: 2 / 1 / 3 / 3; }
+    > .news-card-test-body-row { grid-area: 3 / 1 / 4 / 3; margin-top: 0; padding-left: 78px; }
+    > .news-card-bottom-row { grid-area: 4 / 1 / 5 / 3; }
+  }
+  .cgm-story .news-card-test-body { color: var(--cgm-muted); }
+  .cgm-story.cgm-brief .news-card-test-body { font-size: 13px; }
+  .cgm-story.cgm-brief:not(.cgm-open) .news-card-test-body { -webkit-box-orient: vertical; display: -webkit-box; -webkit-line-clamp: 1; overflow: hidden; word-break: break-word; }
+  .cgm-story.cgm-brief:hover .news-card-test-body,
+  .cgm-story.cgm-open .news-card-test-body { color: var(--cgm-text); }
+  .cgm-story.cgm-lead .news-card-test-body { color: var(--cgm-text); font-size: 15px; }
+  /* The site floats this group on the card's corner (absolute at every width,
+     and at 520 px and below a static group with a -16 px left / -12 px top
+     margin). Our row needs it in flow, flush, as the label's own column. */
+  .news-card-test-corner-group { flex: 0 0 104px; margin: 0; order: 1; position: static; }
   /* The status pill always sits on its saturated status colour, so its text
      stays white even when a page rule tries to darken it. */
   .news-card-test-corner-group .status-square,
@@ -375,27 +440,62 @@ html.cgm-bbm {
   .display-player-name { white-space: nowrap; }
   /* A name longer than its card must wrap rather than run past the card edge. */
   .news-card .display-player-name { white-space: normal; }
-  :is(.news-card, .comment-card) .display-player-name { font-size: 14px !important; font-weight: 700; }
-  .cgm-acc .news-card:has(.news-card-test-header) {
-    box-shadow: none !important;
-    cursor: pointer;
-    padding: 9px 12px;
-    &:hover .news-card-test-body { color: var(--cgm-text); }
-    &:not(.cgm-open) .news-card-test-body { -webkit-box-orient: vertical; display: -webkit-box; -webkit-line-clamp: 1; overflow: hidden; word-break: break-word; }
-    .news-card-test-body { color: var(--cgm-muted); font-size: 13px; }
-    &.cgm-open .news-card-test-body { color: var(--cgm-text); }
-  }
+  .cgm-story .display-player-name { font-weight: 700; }
+  /* The line box must be taller than the pill's, or centring the two in one row
+     drops the name below the pill at small card widths. */
+  .cgm-story.cgm-brief .display-player-name { font-size: 15px !important; line-height: 1.35; }
+  .cgm-story.cgm-lead .display-player-name { font-size: 26px !important; line-height: 1.15; }
+  .comment-card .display-player-name { font-size: 14px !important; }
+  .cgm-story .cgm-head { height: 34px; width: 34px; }
+  .cgm-story.cgm-lead .cgm-head { height: 64px; width: 64px; }
+  .cgm-story.cgm-lead span.cgm-head.cgm-fallback { font-size: 18px; }
+  .cgm-story .display-player-team, .cgm-story .display-player-pos { font-size: 11.5px; }
+  .cgm-story.cgm-lead .display-player-team, .cgm-story.cgm-lead .display-player-pos { font-size: 12.5px; }
   .news-card-bottom-row { margin: 6px 0 0; padding: 0; &:not(:has(.news-card-counts > *)) { display: none; } }
-  .news-card-test-status-corner { background: none !important; border-radius: 0; color: var(--cgm-status, var(--cgm-faint)) !important; font-size: 10px; font-weight: 800; letter-spacing: 0.03em; padding: 0; position: static; text-transform: uppercase; }
+  /* The status word is a pill on a light tint of its own colour: the site's own
+     rule is that a status label never sits on a dark fill. */
+  .news-card-test-status-corner {
+    background: color-mix(in srgb, var(--cgm-status, var(--cgm-line)) 16%, var(--cgm-surface)) !important;
+    border: 1px solid color-mix(in srgb, var(--cgm-status, var(--cgm-line)) 34%, var(--cgm-line));
+    border-radius: 999px;
+    color: color-mix(in srgb, var(--cgm-status, var(--cgm-faint)) 60%, var(--cgm-text)) !important;
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    /* One line, always: a wrapped label grows taller than the name's line box and
+       would push the name off the label's row at narrow card widths. */
+    line-height: 1.2;
+    margin: 0;
+    max-width: 100%;
+    overflow: hidden;
+    padding: 2px 9px;
+    position: static;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .cgm-story.cgm-lead .news-card-test-status-corner { font-size: 11.5px; padding: 3px 12px; }
   .news-card-test-header-left { align-items: center; display: flex; gap: 10px; }
-  .news-card-test-level { background: none !important; color: var(--cgm-faint) !important; font-size: 10px; font-weight: 700; letter-spacing: 0.05em; padding: 0; text-transform: uppercase; }
-  .cgm-col .display-player { align-items: baseline; display: inline-flex; flex-wrap: wrap; gap: 6px; }
-  .cgm-col .display-player-name { font-size: 14px !important; font-weight: 700; }
+  /* The priority word becomes a dot in its own level colour, which the site
+     already sets inline on the element. */
+  .news-card-test-level { background: var(--cgm-line); border-radius: 50%; display: inline-block; font-size: 0; height: 8px; padding: 0 !important; vertical-align: middle; width: 8px; }
+  .cgm-mine-mark {
+    background: var(--cgm-accent-soft);
+    border-radius: 999px;
+    color: color-mix(in srgb, var(--cgm-accent) 75%, var(--cgm-text));
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    padding: 2px 9px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
   /* comments */
-  .cgm-col .comment-card-btn { background: none; border: 0; color: var(--cgm-faint); font-size: 11.5px; padding: 2px 0; }
+  .cgm-home .comment-card-btn { background: none; border: 0; color: var(--cgm-faint); font-size: 11.5px; padding: 2px 0; }
   /* today's games: one folded row per game */
   .daily-status-updates { font-size: 12.5px; }
-  .cgm-col-aside .daily-status-updates { background: var(--cgm-surface); border: 1px solid var(--cgm-line); border-radius: 10px; padding: 12px 14px; }
+  .cgm-home .cgm-rail .daily-status-updates { background: var(--cgm-surface); border: 1px solid var(--cgm-line); border-radius: 10px; padding: 12px 14px; }
   .cgm-game {
     border-top: 1px solid var(--cgm-line-soft);
     > summary {
@@ -403,19 +503,22 @@ html.cgm-bbm {
       cursor: pointer;
       display: flex;
       flex-wrap: wrap;
-      gap: 2px 10px;
+      gap: 2px 8px;
       list-style: none;
       padding: 8px 0;
       &::-webkit-details-marker { display: none; }
-      &::before { border: solid var(--cgm-faint); border-width: 0 2px 2px 0; content: ""; height: 5px; transform: rotate(-45deg); width: 5px; }
-      .daily-status-updates-teams { flex: 1; font-size: 13px; font-weight: 700; margin: 0; }
-      .daily-status-updates-game-1 { border: 0; color: var(--cgm-faint) !important; font-size: 11px; margin: 0; order: 3; padding: 0; text-transform: none; background: none !important; }
+      &::before { border: solid var(--cgm-faint); border-width: 0 2px 2px 0; content: ""; flex: none; height: 5px; margin-right: 2px; transform: rotate(-45deg); width: 5px; }
+      .daily-status-updates-teams { flex: 1 1 auto; font-size: 13px; font-weight: 700; margin: 0; order: 1; }
+      .daily-status-updates-game-1 { background: none !important; border: 0; color: var(--cgm-faint) !important; font-size: 11px; margin: 0; order: 2; padding: 0; text-transform: none; white-space: nowrap; }
+      .cgm-count { order: 3; }
     }
     &[open] > summary::before { transform: rotate(45deg); }
     > div:not(summary) { padding: 1px 0 2px 16px; }
   }
-  /* roster changes */
-  .cgm-col-side .rankings-table { width: 100%; th { position: static; } td { border-bottom: 1px solid var(--cgm-line-soft); padding: 5px 6px; } }
+  /* roster changes: five rows in the closing band, with a sideways scroll of
+     its own so a wide row cannot push the page sideways */
+  .cgm-tablebox { min-width: 0; overflow-x: auto; }
+  .cgm-band .rankings-table { width: 100%; th { position: static; } td { border-bottom: 1px solid var(--cgm-line-soft); padding: 5px 6px; } }
   .cgm-show-all { background: none; border: 0; color: var(--cgm-accent); cursor: pointer; font-size: 12px; font-weight: 600; margin-top: 6px; padding: 4px 0; }
 
   /* depth charts: team cards */
@@ -437,7 +540,7 @@ html.cgm-bbm {
   }
 
   /* page-level headings: the site's default sizes dwarf the tables below them */
-  .container-fluid :is(h2, h3):not(.cgm-acc h3, .cgm-col h3) { color: var(--cgm-text); font-size: 15px; font-weight: 800; letter-spacing: -0.005em; margin: 14px 0 8px; a { color: inherit !important; } }
+  .container-fluid :is(h2, h3):not(.cgm-acc h3, .cgm-home h3) { color: var(--cgm-text); font-size: 15px; font-weight: 800; letter-spacing: -0.005em; margin: 14px 0 8px; a { color: inherit !important; } }
 
   /* tiers, notes and clamped prose */
   .dt-summary { background: var(--cgm-surface) !important; border: 1px solid var(--cgm-line) !important; border-radius: 8px; padding: 10px 14px; }
@@ -469,10 +572,14 @@ html.cgm-bbm {
   .display-player, .display-player-name { text-align: left; }
 
   /* games header: keep the date and back/next buttons on one line, clear of the checkbox */
-  .daily-status-updates > div:first-child { align-items: center; display: flex; flex-wrap: wrap; gap: 4px 8px; }
+  /* The day steps and the "Undetermined Only" box share one row under the
+     header, which keeps the day and its date alone. */
+  .daily-status-updates > div:first-child,
+  .daily-status-updates > div:nth-child(2) { align-items: center; display: flex; flex-wrap: wrap; gap: 4px 8px; }
   .daily-status-updates .q-heading, .daily-status-updates > div:first-child > small:first-of-type { white-space: nowrap; }
   .daily-status-updates small.float-right { float: none !important; margin-left: auto; white-space: nowrap; }
-  .daily-status-updates > div:nth-child(2) { margin-top: 4px; }
+  .daily-status-updates > div:nth-child(2) { margin-top: 2px; }
+  .daily-status-updates label { font-size: 12px; margin: 0; }
 
   /* ---------- Cards: tinted fills with normal text, no coloured rails ---------- */
   .comment-card {
@@ -1067,4 +1174,71 @@ html.cgm-bbm {
 
   /* A board's column must not grow to the table's width and push the page sideways. */
   .row:has(.cgm-board) { min-width: 0; > [class*="col"] { flex: 0 1 auto; max-width: 100%; min-width: 0; } }
+
+  /* ---------- Narrow: the news column takes the width ----------
+     Under a two-column fit the rail drops below the news and the comments
+     follow it, which is also the order the phone reads: news, games, comments,
+     then the two reference lists. */
+  @media (max-width: 980px) {
+    .cgm-home { grid-template-columns: minmax(0, 1fr); }
+    .cgm-home .cgm-main { display: contents; }
+    .cgm-home .cgm-news { order: 1; }
+    .cgm-home .cgm-rail { grid-area: auto / 1; order: 2; }
+    .cgm-home .cgm-comments { order: 3; }
+    .cgm-home .cgm-band { grid-column: 1; order: 4; }
+  }
+  @media (max-width: 760px) {
+    .cgm-home .cgm-band { grid-template-columns: minmax(0, 1fr); }
+  }
+
+  /* ---------- Phone: the bar folds behind the site's own menu button ----------
+     The site's navbar already ships a toggler and a collapse panel, so at this
+     width the bar stops spreading them inline and lets the site own the fold.
+     The page controls ride inside the panel and the dark-mode button stays out
+     in the bar, one tap away. */
+  @media (max-width: 640px) {
+    .cgm-appbar {
+      flex-wrap: wrap;
+      height: auto;
+      /* Not var(--cgm-bar-h): that value is this bar's measured height, so a
+         floor taken from it would never let the bar shrink again after the
+         panel closes. */
+      min-height: 52px;
+      padding: 6px 10px 0;
+      row-gap: 0;
+    }
+    .cgm-appbar .navbar-toggler {
+      align-items: center;
+      border: 1px solid var(--cgm-bar-line);
+      border-radius: 8px;
+      display: inline-flex;
+      height: 34px;
+      justify-content: center;
+      order: 5;
+      width: 40px;
+    }
+    .cgm-appbar .navbar-collapse.show,
+    .cgm-appbar .navbar-collapse.collapsing { display: block !important; flex: 1 0 100%; order: 9; padding-bottom: 10px; }
+    .cgm-appbar .navbar-collapse:not(.show):not(.collapsing) { display: none !important; }
+    .cgm-appbar .navbar-nav.mr-auto,
+    .cgm-appbar .navbar-nav.navbar-right,
+    .cgm-appbar .navbar-nav:not(.mr-auto):not(.navbar-right) { flex-direction: column; flex-wrap: wrap; margin: 0 !important; }
+    .cgm-appbar .navbar-nav .nav-link { padding: 7px 4px !important; }
+    .cgm-appbar .navbar-nav .dropdown-menu { position: static; }
+    .cgm-appbar .bm-tooltip-wrap:has(> button[name="pageTitleRowDarkToggle"]) { margin-left: auto; order: 4; }
+    .cgm-appbar .page-title-row { flex-wrap: wrap; gap: 8px; justify-content: flex-start; padding: 6px 0 2px; }
+    .cgm-appbar .page-title-row-league { flex: 1 1 100%; }
+    .cgm-appbar .page-title-row-search { flex: 1 1 150px; }
+    .cgm-appbar .page-title-row-season { display: none; }
+
+    .cgm-home { padding: 12px 10px 20px; }
+    .cgm-home .cgm-main { gap: 22px; }
+    .cgm-newshead { align-items: flex-start; }
+    .cgm-newshead h3 { font-size: 16px; }
+    .cgm-story.cgm-brief .news-card-test-status-corner { font-size: 9.5px; padding: 1px 6px; }
+    .cgm-story.cgm-lead { padding: 13px 14px 15px; }
+    .cgm-story.cgm-lead .display-player-name { font-size: 21px !important; }
+    .cgm-story.cgm-lead .cgm-head { height: 52px; width: 52px; }
+    .cgm-story.cgm-lead > .news-card-test-body-row { padding-left: 0; }
+  }
 }
