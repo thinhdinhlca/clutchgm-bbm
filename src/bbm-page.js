@@ -778,7 +778,7 @@ return { mineIDs };
 })();
 
 // ---- src/bbm-home.js
-const { elapsedBucket, wordLabel, buildNews, buildGames, buildHome } = (() => {
+const { elapsedBucket, wordLabel, commentBodies, buildNews, buildGames, buildHome } = (() => {
 // The home page ships its widgets as a row of equal cards that each show
 // everything at once. This rebuilds it as a news-led page: Player News is the
 // main column, with the newest story of the active filter as a lead and the
@@ -862,6 +862,57 @@ function tagStories(cards) {
   return words;
 }
 
+// The home page ships comment cards without bodies; the full comments page
+// renders them keyed by the same reply id, so the home page borrows the text
+// for its own cards. Pure string work (each body pairs with the reply id that
+// follows it in the same card) so tests can cover it without a DOM.
+function commentBodies(html) {
+  const page = String(html);
+  const texts = [...page.matchAll(/<div class="comment-card-text"[^>]*>([\s\S]*?)<\/div>/g)];
+  const ids = [...page.matchAll(/[\s"]data-cc-reply="(\d+)"/g)];
+  const bodies = new Map();
+  texts.forEach((text, at) => {
+    const end = texts[at + 1]?.index ?? Infinity;
+    const id = ids.find((match) => match.index > text.index && match.index < end);
+    if (id && text[1].trim()) bodies.set(id[1], text[1]);
+  });
+  return bodies;
+}
+
+const COMMENT_BODIES_KEY = "cgmBbmCommentBodies";
+const COMMENT_BODIES_TTL = 10 * 60 * 1000;
+
+// Fill the home comment cards from the full comments page, once per tab per
+// ten minutes. A card with no match keeps its teaser row, and a page that
+// will not load leaves every teaser standing rather than failing the page.
+async function fillComments(scope) {
+  const cards = [...scope.querySelectorAll(".comment-card")];
+  if (!cards.length) return;
+  try {
+    let cached = null;
+    try { cached = JSON.parse(sessionStorage.getItem(COMMENT_BODIES_KEY)); } catch { /* storage blocked */ }
+    let bodies = cached && Date.now() - cached.at < COMMENT_BODIES_TTL ? new Map(Object.entries(cached.bodies)) : null;
+    if (!bodies) {
+      // The comments page is only readable from the site's own origin; anywhere
+      // else (a saved copy, a test host) there is nothing to read and nothing
+      // to say.
+      if (new URL("usercomments.aspx", location.href).origin !== location.origin) return;
+      const response = await fetch("usercomments.aspx", { credentials: "same-origin" });
+      if (!response.ok) return;
+      bodies = commentBodies(await response.text());
+      try { sessionStorage.setItem(COMMENT_BODIES_KEY, JSON.stringify({ at: Date.now(), bodies: Object.fromEntries(bodies) })); } catch { /* storage blocked */ }
+    }
+    if (!bodies.size) return;
+    for (const card of cards) {
+      const id = card.querySelector("[data-cc-reply]")?.getAttribute("data-cc-reply");
+      const text = card.querySelector(".comment-card-text");
+      const body = id && bodies.get(id);
+      if (!text || !body) continue;
+      text.innerHTML = body;
+      card.classList.remove("cgm-empty");
+    }
+  } catch { /* the teasers stand; a failed fill is not a page error */ }
+}
 // The filter row: one chip per status word with its count, plus All.
 function storyChips(cards, words, onPick) {
   const chips = div("cgm-chips");
@@ -1070,12 +1121,18 @@ function buildHome() {
 
   foldRoster(found.roster);
   if (found.articles) limit([...found.articles.querySelectorAll(".news-card")], BAND_ROWS, found.articles, "articles");
-  if (found.comments) limit([...found.comments.querySelectorAll(".comment-card")], COMMENTS_VISIBLE, found.comments, "comments");
+  if (found.comments) {
+    for (const card of found.comments.querySelectorAll(".comment-card")) {
+      card.classList.toggle("cgm-empty", !card.querySelector(".comment-card-text")?.textContent.trim());
+    }
+    limit([...found.comments.querySelectorAll(".comment-card")], COMMENTS_VISIBLE, found.comments, "comments");
+    fillComments(found.comments);
+  }
 
   const box = document.querySelector(".daily-status-updates");
   if (box) buildGames(box);
 }
-return { elapsedBucket, wordLabel, buildNews, buildGames, buildHome };
+return { elapsedBucket, wordLabel, commentBodies, buildNews, buildGames, buildHome };
 })();
 
 // ---- src/bbm-espn.js
