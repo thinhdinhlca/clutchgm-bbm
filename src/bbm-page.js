@@ -754,16 +754,34 @@ return { hiddenFields, pageURL, postFields };
 // ---- src/bbm-live.js
 const { leagueOptions, scoreboard, scoreLine, leagueBoards, servesMatchups, renderLive } = (() => {
 // Matchup Monster tab: one compact card per league with the live H2H score.
-// The matchup page shows one league at a time behind a postback league picker,
-// so a refresh walks every league with chained posts (each response carries
-// the next post's viewstate) and parses the scoreboard table. Leagues without
-// a matchup table (roto) render as a link row instead. Anything that fails
-// keeps the previous cards rather than emptying the tab.
+// The site serves the matchup page only when the session already carries a
+// league, and the league picker posts back to the page it lives on, so a
+// refresh sets the league from the home page and then reads the matchup page
+// league by league (each response carries the next post's viewstate). The
+// page holds one roster table per side; both tables end with the league's
+// free agents, so each side's own players are the rows in front of that
+// shared tail. Anything that fails keeps the previous cards rather than
+// emptying the tab.
 
 
 const SCORE_URL = "matchupmonster.aspx";
-const REFRESH_MS = 3 * 60 * 1000;
+const REFRESH_MS = 10 * 60 * 1000;
 const LIVE_KEY = "cgmBbmLive";
+
+// The categories the card shows and the site column each one comes from.
+// The counting ones are summed over the roster, the rates are averaged, and
+// fewer turnovers wins the category.
+const CATEGORIES = [
+  { cat: "PTS", col: "p/g" },
+  { cat: "3PM", col: "3/g" },
+  { cat: "REB", col: "r/g" },
+  { cat: "AST", col: "a/g" },
+  { cat: "STL", col: "s/g" },
+  { cat: "BLK", col: "b/g" },
+  { cat: "FG%", col: "fg%", rate: true },
+  { cat: "FT%", col: "ft%", rate: true },
+  { cat: "TO", col: "to/g", lower: true },
+];
 
 // Every league on the matchup page's own picker, with the current one marked.
 function leagueOptions(html) {
@@ -773,34 +791,98 @@ function leagueOptions(html) {
     .map((m) => ({ id: m[2], name: m[3].trim(), selected: /selected/.test(m[1]) }));
 }
 
-// The scoreboard is the table holding the Win Probability row: the two team
-// rows above Compare, the category heads, and both sides' totals. Anything
-// else (a roto watch list) is not a matchup.
+// The page's own cell text, without the markup the site wraps it in.
+const cellText = (html) =>
+  String(html)
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&#160;|&nbsp;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const rowCells = (row) => [...row.matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/g)].map((m) => cellText(m[1]));
+
+// The site's number, or null when the cell holds no value for this player.
+const statValue = (cells, at) => {
+  const raw = cells[at];
+  if (raw === undefined) return null;
+  const value = Number(raw.replace(/[+%,]/g, ""));
+  return Number.isFinite(value) ? value : null;
+};
+
+const headerIndex = (head, name) => head.findIndex((cell) => cell.toLowerCase() === name.toLowerCase());
+
+// The page's two roster tables, each with its header row and its players.
+function rosters(html) {
+  return [...String(html).matchAll(/<table[^>]*modern-stats-table[^>]*>([\s\S]*?)<\/table>/g)]
+    .map((match) => {
+      const rows = [...match[1].matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)].map((row) => row[1]);
+      if (rows.length < 2) return null;
+      return { head: rowCells(rows[0]), players: rows.slice(1).map(rowCells) };
+    })
+    .filter((roster) => roster && headerIndex(roster.head, "p/g") >= 0);
+}
+
+// Both tables end with the league's free agents, so the shared tail is what
+// the two sides agree on and each side's own players are what is left in
+// front of it.
+function ownPlayers(roster, other) {
+  const key = (cells) => cells.join("|");
+  let shared = 0;
+  while (shared < roster.players.length && shared < other.players.length) {
+    const mine = roster.players[roster.players.length - 1 - shared];
+    const theirs = other.players[other.players.length - 1 - shared];
+    if (key(mine) !== key(theirs)) break;
+    shared += 1;
+  }
+  return roster.players.slice(0, roster.players.length - shared);
+}
+
+// One side's total for a category: the counting ones are summed over the
+// roster, the rates are averaged and shown in points.
+function sideTotal(players, at, rate) {
+  const values = players.map((cells) => statValue(cells, at)).filter((value) => value !== null);
+  if (!values.length) return null;
+  const sum = values.reduce((total, value) => total + value, 0);
+  return rate ? (sum / values.length) * 100 : sum;
+}
+
+const round = (value) => Math.round(value * 10) / 10;
+
+// The board: the two sides' names, their totals per category, and the
+// difference. A positive difference always means the first side wins the
+// category, so fewer turnovers counts in the first side's favour.
 function scoreboard(html) {
   const page = String(html);
   const selected = (name) => {
-    const select = page.match(new RegExp(`<select[^>]*name='${name}'[^>]*>([\\s\\S]*?)</select>`));
+    const select = page.match(new RegExp(`<select[^>]*name=['"]${name}['"][^>]*>([\\s\\S]*?)</select>`));
     const option = select && select[1].match(/<option[^>]*selected[^>]*>([^<]*)</);
     return option ? option[1].trim() : null;
   };
-  const table = page.match(/<table[^>]*>[\s\S]*?Win Probability[\s\S]*?<\/table>/);
-  if (!table) return null;
-  const rows = [...table[0].matchAll(/<tr>([\s\S]*?)<\/tr>/g)].map((m) => m[1]);
-  const cells = (row) => [...row.matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/g)].map((c) => c[1].replace(/<[^>]+>/g, "").trim());
-  const at = rows.findIndex((row) => cells(row)[0] === "Compare");
-  if (at < 2 || /<input/i.test(rows[at - 2]) || /<input/i.test(rows[at - 1])) return null;
   const team1 = selected("Team1DD");
   const team2 = selected("Team2DD");
   if (!team1 || !team2) return null;
-  const num = (v) => Number(String(v).replace("+", "").replace("%", ""));
-  return {
-    team1,
-    team2,
-    cats: cells(rows[0]).slice(1),
-    first: cells(rows[at - 2]).slice(1).map(num),
-    second: cells(rows[at - 1]).slice(1).map(num),
-    compare: cells(rows[at]).slice(1).map(num),
-  };
+  const tables = rosters(page);
+  if (tables.length < 2) return null;
+  const first = ownPlayers(tables[0], tables[1]);
+  const second = ownPlayers(tables[1], tables[0]);
+  if (!first.length || !second.length) return null;
+  const cats = [];
+  const totals = [];
+  const against = [];
+  const compare = [];
+  for (const { cat, col, rate, lower } of CATEGORIES) {
+    const at = headerIndex(tables[0].head, col);
+    if (at < 0) continue;
+    const one = sideTotal(first, at, rate);
+    const two = sideTotal(second, at, rate);
+    if (one === null || two === null) continue;
+    cats.push(cat);
+    totals.push(round(one));
+    against.push(round(two));
+    compare.push(round(lower ? two - one : one - two));
+  }
+  if (!cats.length) return null;
+  return { team1, team2, cats, first: totals, second: against, compare };
 }
 
 // Which side each category belongs to: the Compare row already points the
@@ -835,33 +917,46 @@ function scoreLine(cats, compare) {
 // is restored afterwards, so a later visit to the matchup page lands where
 // the reader left it.
 async function leagueBoards({ onLeague, onUnavailable } = {}) {
-  if (new URL(SCORE_URL, location.href).origin !== location.origin) return;
-  const first = await (await fetch(SCORE_URL, { credentials: "same-origin" })).text();
-  // The site answers the Matchup Monster page with a redirect to the rankings
-  // when it will not serve it, so a page with no matchup table at all is the
-  // site declining, not a league without one.
-  if (!servesMatchups(first)) {
+  if (new URL(pageURL(SCORE_URL)).origin !== location.origin) return;
+  // The site answers the matchup page with a redirect to the rankings when
+  // the session carries no league, and the league picker posts back to the
+  // page it lives on, so the league is set from the home page first.
+  const home = await (await fetch(location.href, { credentials: "same-origin" })).text();
+  const leagues = leagueOptions(home);
+  if (!leagues.length) {
     onUnavailable?.();
     return;
   }
-  const options = leagueOptions(first);
-  const home = options.find((league) => league.selected)?.id;
-  let fields = hiddenFields(first);
+  const current = leagues.find((league) => league.selected)?.id ?? leagues[0].id;
+  try {
+    await postFields(location.href, hiddenFields(home), { __EVENTTARGET: "pageTitleRowLeague", __EVENTARGUMENT: "", pageTitleRowLeague: current });
+  } catch { /* the session may already carry a league */ }
+  let html = await (await fetch(pageURL(SCORE_URL), { credentials: "same-origin" })).text();
+  if (!servesMatchups(html)) {
+    onUnavailable?.();
+    return;
+  }
+  // The matchup page carries the same league picker as the home page.
+  const options = leagueOptions(html);
+  let showing = current;
   for (const league of options) {
     try {
-      const html = league.id === home ? first : await postFields(SCORE_URL, fields, { __EVENTTARGET: "pageTitleRowLeague", __EVENTARGUMENT: "", pageTitleRowLeague: league.id });
-      fields = hiddenFields(html);
+      if (league.id !== showing) {
+        html = await postFields(pageURL(SCORE_URL), hiddenFields(html), { __EVENTTARGET: "pageTitleRowLeague", __EVENTARGUMENT: "", pageTitleRowLeague: league.id });
+        showing = league.id;
+      }
       onLeague?.({ id: league.id, name: league.name, board: scoreboard(html) });
     } catch { /* one league failing leaves the rest standing */ }
   }
-  if (home) {
-    try { await postFields(SCORE_URL, fields, { __EVENTTARGET: "pageTitleRowLeague", __EVENTARGUMENT: "", pageTitleRowLeague: home }); } catch { /* the league picker keeps the last league; harmless */ }
+  if (showing !== current) {
+    try { await postFields(pageURL(SCORE_URL), hiddenFields(html), { __EVENTTARGET: "pageTitleRowLeague", __EVENTARGUMENT: "", pageTitleRowLeague: current }); } catch { /* the league picker keeps the last league; harmless */ }
   }
 }
 
-// The matchup board is the table with the Win Probability row in it.
+// The site serves the matchup page only for a session that carries a league;
+// the served page is the one with the Team 1 picker on it.
 function servesMatchups(html) {
-  return /Win Probability/.test(String(html));
+  return /name=['"]Team1DD['"]/.test(String(html));
 }
 
 const div = (className, ...nodes) => {
@@ -951,7 +1046,7 @@ function renderLive(panel) {
             // The site will not serve the matchup page, so there is nothing to
             // list: say so once instead of showing a league per row with no
             // scores in them.
-            list.replaceChildren(div("cgm-match-note", "Basketball Monster is not serving the Matchup Monster page right now — it redirects to the rankings."));
+            list.replaceChildren(div("cgm-match-note", "Basketball Monster is not serving the Matchup Monster page right now — it redirects to the rankings when the session carries no league."));
           },
         });
         writeLive(boards);
