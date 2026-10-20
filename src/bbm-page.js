@@ -752,7 +752,7 @@ return { hiddenFields, pageURL, postFields };
 })();
 
 // ---- src/bbm-live.js
-const { leagueOptions, scoreboard, scoreLine, leagueBoards, renderLive } = (() => {
+const { leagueOptions, scoreboard, scoreLine, leagueBoards, servesMatchups, renderLive } = (() => {
 // Matchup Monster tab: one compact card per league with the live H2H score.
 // The matchup page shows one league at a time behind a postback league picker,
 // so a refresh walks every league with chained posts (each response carries
@@ -834,9 +834,16 @@ function scoreLine(cats, compare) {
 // Walk every league, reporting each board as it arrives. The session's league
 // is restored afterwards, so a later visit to the matchup page lands where
 // the reader left it.
-async function leagueBoards({ onLeague } = {}) {
+async function leagueBoards({ onLeague, onUnavailable } = {}) {
   if (new URL(SCORE_URL, location.href).origin !== location.origin) return;
   const first = await (await fetch(SCORE_URL, { credentials: "same-origin" })).text();
+  // The site answers the Matchup Monster page with a redirect to the rankings
+  // when it will not serve it, so a page with no matchup table at all is the
+  // site declining, not a league without one.
+  if (!servesMatchups(first)) {
+    onUnavailable?.();
+    return;
+  }
   const options = leagueOptions(first);
   const home = options.find((league) => league.selected)?.id;
   let fields = hiddenFields(first);
@@ -850,6 +857,11 @@ async function leagueBoards({ onLeague } = {}) {
   if (home) {
     try { await postFields(SCORE_URL, fields, { __EVENTTARGET: "pageTitleRowLeague", __EVENTARGUMENT: "", pageTitleRowLeague: home }); } catch { /* the league picker keeps the last league; harmless */ }
   }
+}
+
+// The matchup board is the table with the Win Probability row in it.
+function servesMatchups(html) {
+  return /Win Probability/.test(String(html));
 }
 
 const div = (className, ...nodes) => {
@@ -933,7 +945,15 @@ function renderLive(panel) {
       } else {
         list.replaceChildren();
         boards.length = 0;
-        await leagueBoards({ onLeague: upsert });
+        await leagueBoards({
+          onLeague: upsert,
+          onUnavailable: () => {
+            // The site will not serve the matchup page, so there is nothing to
+            // list: say so once instead of showing a league per row with no
+            // scores in them.
+            list.replaceChildren(div("cgm-match-note", "Basketball Monster is not serving the Matchup Monster page right now — it redirects to the rankings."));
+          },
+        });
         writeLive(boards);
       }
       const time = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
@@ -951,7 +971,7 @@ function renderLive(panel) {
     if (!panel.hidden && !document.hidden) update();
   }, REFRESH_MS);
 }
-return { leagueOptions, scoreboard, scoreLine, leagueBoards, renderLive };
+return { leagueOptions, scoreboard, scoreLine, leagueBoards, servesMatchups, renderLive };
 })();
 
 // ---- src/bbm-espn.js
