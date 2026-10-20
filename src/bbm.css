@@ -288,16 +288,25 @@ html.cgm-bbm {
   .cgm-feed-days { align-items: center; display: inline-flex; gap: 8px; }
   .cgm-days-label { color: var(--cgm-faint); font-size: 12px; }
   .cgm-days { background: var(--cgm-surface); border: 1px solid var(--cgm-line); border-radius: 8px; color: var(--cgm-text); font-size: 12.5px; padding: 4px 8px; }
+  /* ---------- One head row for every surface ----------
+     The title on the left, the controls on the right, the same type and the
+     same air on every panel: the news, the games, the comments, the matchups
+     and the news page. The tab strip keeps its own rule; the head is a
+     heading, not a divider. */
+  .cgm-panelhead { align-items: center; display: flex; flex-wrap: wrap; gap: 10px 16px; justify-content: space-between; margin: 0 0 14px; }
+  .cgm-panelhead-left { align-items: center; display: flex; flex-wrap: wrap; gap: 10px 14px; }
+  .cgm-panelhead-title { color: var(--cgm-text); font-size: 16px; font-weight: 800; letter-spacing: -0.01em; }
+  .cgm-panelhead h3 { color: var(--cgm-text); font-size: 16px; font-weight: 800; letter-spacing: -0.01em; margin: 0; a { color: inherit !important; } }
+  /* The site's own filter is a full-width control; in the head row it takes
+     only the room it needs, so the title and the control share one line. */
+  .cgm-panelhead .bm-custom-select { max-width: 340px; }
   /* ---------- Matchup Monster: one compact card per league ----------
      The score line names its leader; each category chip keeps its full
      "ours–theirs" count in its tooltip. Dots carry the result colour so the
      text itself stays on the passing palette. */
-  .cgm-live-bar { align-items: center; display: flex; gap: 12px; margin: 0 0 12px; max-width: 880px; }
   .cgm-live-stamp { color: var(--cgm-faint); font-size: 12px; }
-  .cgm-live-bar .cgm-show-all { margin-top: 0; }
-  .cgm-live-list { display: grid; gap: 0; max-width: 880px; }
+  .cgm-live-list { display: grid; gap: 0; }
   .cgm-match { background: none; border: 0; border-radius: 0; padding: 12px 2px; }
-  .cgm-match + .cgm-match { border-top: 1px solid var(--cgm-line-soft); }
   .cgm-match-head { align-items: baseline; display: flex; gap: 10px; justify-content: space-between; margin-bottom: 8px; }
   .cgm-match-league { color: var(--cgm-faint); font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
   .cgm-match-head a { font-size: 12px; white-space: nowrap; }
@@ -316,13 +325,10 @@ html.cgm-bbm {
      One row per game: both sides with their logos, the scores, the tip time
      and the state. The side ahead is underlined, the way the live match board
      marks a leader. A game in progress carries a bar of the game played. */
-  .cgm-today-bar { align-items: center; display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 0 0 10px; max-width: 880px; }
-  .cgm-today-when { font-size: 15px; font-weight: 800; letter-spacing: -0.005em; }
   .cgm-today-step { background: none; border: 1px solid var(--cgm-line); border-radius: 8px; color: var(--cgm-muted); cursor: pointer; font-size: 15px; line-height: 1; padding: 5px 12px; &:hover { color: var(--cgm-text); } }
-  .cgm-today-stamp { color: var(--cgm-faint); font-size: 12px; margin-left: auto; }
-  .cgm-today-list { display: grid; max-width: 880px; }
+  .cgm-today-stamp { color: var(--cgm-faint); font-size: 12px; }
+  .cgm-today-list { display: grid; }
   .cgm-today-game { align-items: center; display: flex; flex-wrap: wrap; gap: 6px 12px; padding: 11px 2px; }
-  .cgm-today-game + .cgm-today-game { border-top: 1px solid var(--cgm-line-soft); }
   .cgm-today-team { align-items: center; display: inline-flex; font-weight: 700; gap: 7px; }
   .cgm-today-logo { height: 20px; width: 20px; }
   .cgm-today-score { font-size: 17px; font-weight: 800; min-width: 30px; }
@@ -340,7 +346,12 @@ html.cgm-bbm {
   .cgm-today-progress-fill { background: var(--cgm-accent); height: 100%; }
   .cgm-today-box { background: none; border: 0; color: var(--cgm-faint) !important; cursor: pointer; font-size: 11.5px; padding: 0; text-decoration: none; &:hover { color: var(--cgm-accent) !important; } }
   .cgm-today-empty { color: var(--cgm-faint); font-size: 13px; padding: 14px 0; }
-  .cgm-today-bar .cgm-show-all { margin-top: 0; }
+  .cgm-panelhead .cgm-show-all { margin-top: 0; }
+  /* Every list on the home page fills the page the same way: one column on a
+     narrow window, two once there is room for them. */
+  @media (min-width: 1100px) {
+    .cgm-today-list, .cgm-live-list { column-gap: 64px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  }
   /* ---------- The box score sheet ----------
      The game's own table, in the site's own columns, with the site's analyst
      comments on the players in it underneath. The sheet takes nearly the whole
@@ -365,27 +376,7 @@ html.cgm-bbm {
   .cgm-analyst-body { color: var(--cgm-muted); font-size: 13.5px; line-height: 1.5; margin-top: 3px; }
   .cgm-box-empty { color: var(--cgm-faint); font-size: 13px; padding: 8px 0; }
   /* Every section labels its own head row, so the site's own link to the full
-     list stays clickable. */
-  .cgm-home .cgm-blockhead { align-items: center; display: flex; flex-wrap: wrap; gap: 8px 16px; justify-content: space-between; margin: 0 0 10px; }
-  .cgm-home .cgm-blockhead h3 {
-    color: var(--cgm-text);
-    font-size: 13px;
-    font-weight: 800;
-    letter-spacing: -0.005em;
-    margin: 0;
-    a { color: inherit !important; }
-  }
-  /* The news head keeps the site's own link to the full feed beside the
-     status chips; the chips sit right next to the heading on the left. */
-  .cgm-newshead { align-items: center; display: flex; flex-wrap: wrap; gap: 10px 14px; justify-content: flex-start; margin: 0 0 12px; }
-  .cgm-newshead h3 {
-    color: var(--cgm-text);
-    font-size: 17px;
-    font-weight: 800;
-    letter-spacing: -0.01em;
-    margin: 0;
-    a { color: inherit !important; }
-  }
+     list stays clickable. The head row itself is the shared one above. */
 
   /* ---------- Disclosure: folding sections, limited lists, segmented filters ---------- */
   .cgm-acc {
@@ -478,10 +469,10 @@ html.cgm-bbm {
      card no padding of its own, so the story has to bring its own: without it
      two stories meet at zero and the feed reads as one block of text. */
   .cgm-story.news-card { gap: 9px 14px; padding: 15px 2px 17px; }
-  /* The story's meta — the source link and the age — sits at the end of the
-     name's line, so a line of its own never carries only an age. It keeps its
-     own width and wraps whole when the name and the chips leave no room. */
-  .cgm-story .display-player > .news-card-test-header { flex: none; margin-left: auto; position: static; }
+  /* The story's meta — the source link and the age — rides with the name
+     instead of at the far edge of the column, where it read as a column of
+     numbers of its own. */
+  .cgm-story .display-player > .news-card-test-header { flex: none; position: static; }
   .cgm-story .display-player > .news-card-test-header .time-since { color: var(--cgm-faint); font-size: 11.5px; }
   /* The note must wrap inside the story: the site's row is a flex line, and
      without this a long note runs past the card's edge instead of wrapping. */
@@ -1301,8 +1292,6 @@ html.cgm-bbm {
     .cgm-tabs .cgm-seg-btn { font-size: 12.5px; padding-left: 4px; padding-right: 4px; }
     .cgm-today-stamp { margin-left: 0; }
     .cgm-today-meta { margin-left: 0; }
-    .cgm-newshead { align-items: center; }
-    .cgm-newshead h3 { font-size: 16px; }
     .cgm-news .cgm-stories { display: block; }
     .cgm-story .news-card-test-status-corner { font-size: 9.5px; padding: 1px 6px; }
     .cgm-story { padding: 10px 2px; }
@@ -1310,10 +1299,5 @@ html.cgm-bbm {
     .cgm-byline .cgm-head { height: 36px; width: 36px; }
     .cgm-byline .cgm-logo { height: 22px; }
     .cgm-story .display-player-name { font-size: 15px !important; }
-    /* On a phone the name, the chips and the story's meta do not fit on one
-       line, so the meta keeps the site's own corner at the card's top right and
-       the name's line leaves room for it. The chips wrap before it. */
-    .cgm-story .display-player > .news-card-test-header { left: auto; margin-left: 0; position: absolute; right: 2px; top: 15px; }
-    .cgm-story .display-player { padding-right: 64px; }
   }
 }

@@ -906,7 +906,10 @@ const writeLive = (boards) => {
 function renderLive(panel) {
   const stamp = div("cgm-live-stamp", "Not updated yet");
   const refresh = Object.assign(document.createElement("button"), { type: "button", className: "cgm-show-all", textContent: "Refresh" });
-  const bar = div("cgm-live-bar", stamp, refresh);
+  // The same head row as every other surface: the section's name on the left,
+  // the stamp and the refresh on the right.
+  const bar = div("cgm-panelhead");
+  bar.append(div("cgm-panelhead-left", div("cgm-panelhead-title", "Matchup Monster")), div("cgm-panelhead-left", stamp, refresh));
   const list = div("cgm-live-list");
   panel.append(bar, list);
 
@@ -2103,7 +2106,7 @@ function gameRow(game, onBox) {
 }
 
 function renderToday(panel) {
-  const when = div("cgm-today-when", "Loading the day's games…");
+  const when = div("cgm-panelhead-title", "Loading the day's games…");
   const stamp = div("cgm-today-stamp", "Not updated yet");
   const refresh = Object.assign(document.createElement("button"), { type: "button", className: "cgm-show-all", textContent: "Refresh" });
   const back = Object.assign(document.createElement("button"), { type: "button", className: "cgm-today-step", textContent: "‹", title: "Previous day" });
@@ -2111,7 +2114,10 @@ function renderToday(panel) {
   const next = Object.assign(document.createElement("button"), { type: "button", className: "cgm-today-step", textContent: "›", title: "Next day" });
   next.setAttribute("aria-label", "Next day");
   const today = Object.assign(document.createElement("button"), { type: "button", className: "cgm-show-all", textContent: "Today" });
-  const bar = div("cgm-today-bar", when, back, next, today, refresh, stamp);
+  // The same head row as every other surface: the day and its controls on the
+  // left, the stamp on the right.
+  const bar = div("cgm-panelhead");
+  bar.append(div("cgm-panelhead-left", when, back, next, today, refresh), stamp);
   const list = div("cgm-today-list");
   panel.append(bar, list);
 
@@ -2656,11 +2662,12 @@ function buildNews(body, { all = false, bucket = elapsedBucket, mine = false } =
 
   // The site's own heading — the link to the full feed — stays, and moves in
   // beside the status chips.
-  const head = div("cgm-newshead");
+  const head = div("cgm-panelhead");
+  const left = div("cgm-panelhead-left");
   const heading = body.querySelector("h3");
   if (heading) {
     const wrapper = heading.parentElement;
-    head.append(heading);
+    left.append(heading);
     if (wrapper && wrapper !== body && !wrapper.children.length) wrapper.remove();
   }
 
@@ -2685,7 +2692,8 @@ function buildNews(body, { all = false, bucket = elapsedBucket, mine = false } =
     bar.replaceChildren(storyChips(cards, words, (key) => { state.word = key; state.all = false; draw(); }), mineBox);
   };
   setWords(words);
-  head.append(bar);
+  left.append(bar);
+  head.append(left);
   dropStraySpace(body);
 
   // Whatever the heading and the cards left behind would only be an empty box.
@@ -2775,7 +2783,7 @@ function sections(row) {
 // A section head row: the site's own heading, which keeps its link, plus an
 // optional control from the same widget.
 function headRow(card, extra) {
-  const row = div("cgm-blockhead");
+  const row = div("cgm-panelhead");
   const heading = card?.querySelector("h3");
   if (heading) {
     const wrapper = heading.parentElement;
@@ -2853,7 +2861,7 @@ function buildHome() {
   // The tab's own heading points at the site's All Player News page, which the
   // redesign does not own; the news page carries the week, so that is where
   // the reader goes.
-  const heading = found.news.querySelector(".cgm-newshead a");
+  const heading = found.news.querySelector(".cgm-panelhead a");
   if (heading) heading.href = "playernews.aspx";
   headRow(found.comments, found.comments?.querySelector(".bm-custom-select"));
   if (found.comments) {
@@ -2966,9 +2974,8 @@ function buildNewsPage() {
   const controller = buildNews(widget, { all: true, bucket: dayBucket, mine: true });
   if (!controller) return;
 
-  // The days control sits beside the chips, so it is put in the head row the
-  // feed just built.
-  widget.querySelector(".cgm-newshead")?.append(days);
+  // The days control sits beside the chips, in the head row's right group.
+  widget.querySelector(".cgm-panelhead")?.append(days);
   select.addEventListener("change", async () => {
     select.disabled = true;
     try {
