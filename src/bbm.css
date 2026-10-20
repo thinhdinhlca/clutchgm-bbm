@@ -243,9 +243,11 @@ html.cgm-bbm {
   .modern-table-container { background: none; border: 0; box-shadow: none; margin-bottom: 0; }
 
   /* Position and team tags: a tinted background in the tag's own colour with
-     neutral text, so they read on a light or a dark page. */
+     neutral text, so they read on a light or a dark page. The tint mixes
+     towards the surface, not towards nothing, or the tag loses its edge on a
+     dark page. */
   span[style*="var(--pos-"], .display-player-pos, .display-player-team {
-    background: color-mix(in srgb, currentColor 26%, transparent);
+    background: color-mix(in srgb, currentColor 26%, var(--cgm-surface));
     border-radius: 4px;
     display: inline-block;
     font-size: 10.5px !important;
@@ -298,8 +300,10 @@ html.cgm-bbm {
   .cgm-panelhead-title { color: var(--cgm-text); font-size: 16px; font-weight: 800; letter-spacing: -0.01em; }
   .cgm-panelhead h3 { color: var(--cgm-text); font-size: 16px; font-weight: 800; letter-spacing: -0.01em; margin: 0; a { color: inherit !important; } }
   /* The site's own filter is a full-width control; in the head row it takes
-     only the room it needs, so the title and the control share one line. */
-  .cgm-panelhead .bm-custom-select { max-width: 340px; }
+     only the room its label needs, so the arrow sits beside the label. */
+  .cgm-panelhead .bm-custom-select { max-width: none; min-width: 0; width: auto; }
+  .cgm-panelhead .bm-custom-select-trigger { min-width: 0; padding-right: 2rem; }
+  .cgm-panelhead .bm-custom-select-options { min-width: 180px; }
   /* ---------- Matchup Monster: one compact card per league ----------
      The score line names its leader; each category chip keeps its full
      "ours–theirs" count in its tooltip. Dots carry the result colour so the
@@ -494,7 +498,6 @@ html.cgm-bbm {
   /* A name longer than its card must wrap rather than run past the card edge. */
   .news-card .display-player-name { white-space: normal; }
   .cgm-story .display-player-name { color: var(--cgm-accent) !important; font-size: 17px !important; font-weight: 800; letter-spacing: 0.01em; line-height: 1.25; text-transform: uppercase; }
-  .comment-card .display-player-name { font-size: 14px !important; }
   .cgm-story .display-player-team, .cgm-story .display-player-pos { font-size: 11.5px; }
   /* The linked tweet reads as a quoted follow-up under the note, in the same
      narrow column as the note. */
@@ -624,26 +627,174 @@ html.cgm-bbm {
   .daily-status-updates > div:nth-child(2) { margin-top: 2px; }
   .daily-status-updates label { font-size: 12px; margin: 0; }
 
-  /* ---------- Cards: tinted fills with normal text, no coloured rails ---------- */
+  /* ---------- Comment cards ----------
+     One card per comment: the player it is about on the head row with the
+     commenter's name and the age, the body under them on one left edge, and
+     the vote and reply controls on a last row. The body hangs under the
+     player's name, so the headshot sits in the margin. */
   .comment-card {
     background: none !important;
     border: 0 !important;
-    border-bottom: 1px solid var(--cgm-line-soft);
+    border-bottom: 1px solid var(--cgm-line) !important;
     border-radius: 0;
     box-shadow: none !important;
     color: var(--cgm-text);
     margin: 0;
-    padding: 10px 2px;
+    padding: 12px 2px;
+    /* The site's own card slides sideways when the pointer lands on it; a
+       flat list does not move. */
+    transform: none !important;
   }
-  .comment-card:last-child { border-bottom: 0; }
+  .comment-card:last-child { border-bottom: 0 !important; }
   .comment-card-btn { background: none; border: 0; color: var(--cgm-muted); font-size: 11.5px; padding: 2px 0; }
+  /* The comments are short notes, so on a wide window they read two across,
+     like the news feed, and the page is not half empty. */
+  .cgm-comments .cgm-comment-list { align-items: stretch; column-gap: 64px; display: grid; grid-template-columns: minmax(0, 1fr); }
+  /* The card never grows past the width its text needs, so a rule under it
+     stops near the words instead of running the width of the page. */
+  .cgm-comments .comment-card { max-width: 654px; }
+  @media (min-width: 1100px) {
+    .cgm-comments .cgm-comment-list { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    /* One rule per row of comments: the cards of a row share their height, so
+       their rules land on the same line. The last row keeps its rule too, or
+       the row would close on one side only. */
+    .cgm-comments .comment-card:last-child { border-bottom: 1px solid var(--cgm-line) !important; }
+  }
+  /* The head row keeps its title and its filter together, the way a comment
+     keeps its player and its author together. */
+  .cgm-comments .cgm-panelhead { gap: 16px; justify-content: flex-start; }
+  /* The headshot and the gap to the name: the body's left edge. */
+  .cgm-comment { --cgm-rail: 34px; }
+  .cgm-comment .cgm-comment-head { align-items: center; display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-start; margin: 0; }
+  .cgm-comment .comment-card-player { align-items: center; display: flex; gap: 8px !important; min-width: 0; }
+  /* The name, the tags and the headshot share one line box, so the tags sit
+     on the name's line instead of hanging below it. The tags keep their own
+     size and the name gives way when the row is narrow. */
+  .cgm-comment .display-player { align-items: center; display: inline-flex; flex-wrap: nowrap; gap: 4px; min-width: 0; }
+  .cgm-comment .display-player-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  /* The player the comment is about leads the row; the commenter's name and
+     the age follow it. */
+  .cgm-comment .display-player-name { color: var(--cgm-text) !important; font-size: 15px !important; font-weight: 800 !important; letter-spacing: 0.01em; text-transform: uppercase; }
+  .cgm-comment .display-player-team, .cgm-comment .display-player-pos { align-items: center; display: inline-flex; flex: none; font-size: 10px !important; height: 18px; margin: 0 !important; padding: 0 6px; }
+  .cgm-comment .cgm-comment-meta { align-items: center; display: flex; flex: none; gap: 8px; }
+  .cgm-comment .cgm-comment-who { white-space: nowrap; }
+  .cgm-comment .cgm-comment-time { color: var(--cgm-faint); font-size: 11.5px; white-space: nowrap; }
+  /* The site's filter link is a small control on the name's line, not a
+     triangle floating above it. */
+  .cgm-comment .bm-tooltip-wrap { align-items: center; display: inline-flex; }
+  .cgm-comment .comment-card-viewall { align-items: center; border-radius: 6px; color: var(--cgm-muted); display: inline-flex; height: 20px; justify-content: center; margin-left: 0; width: 20px; }
+  .cgm-comment .comment-card-viewall:hover { background: var(--cgm-line-soft); color: var(--cgm-accent); }
+  .cgm-comment .comment-card-text { color: var(--cgm-muted); font-size: 13px; line-height: 1.55; margin: 6px 0 0; max-width: 620px; padding-left: var(--cgm-rail); white-space: pre-line; }
+  .cgm-comment .comment-card-actions { align-items: center; display: flex; gap: 14px; margin: 8px 0 0; padding-left: var(--cgm-rail); }
+  .cgm-comment .cgm-head { height: 28px; width: 28px; }
+  /* The commenter's name is a byline, not a headline: it is smaller than the
+     player's name and it does not take the body's colour, so the three levels
+     stay apart. */
+  .cgm-comment .cgm-comment-who .display-username,
+  .cgm-comment .cgm-comment-who .display-username-link { color: var(--cgm-text) !important; font-size: 12px; font-weight: 600; }
+  /* A player name in the body is marked so a reader can scan a comment for
+     names: the name carries the weight and the page's own text colour, so it
+     reads louder than the muted words around it. A name that names one player
+     links to that player's page. */
+  .cgm-mention { color: var(--cgm-text); font-weight: 700; }
+  a.cgm-mention { text-decoration: underline; text-decoration-color: var(--cgm-line); text-underline-offset: 3px; }
+  a.cgm-mention:hover { text-decoration-color: var(--cgm-accent); }
+  /* ---------- Community polls ----------
+     The site's own polls, read from its polls page and shown under the
+     comments: the question leads, the options sit side by side, and the vote
+     is the one control on the card. The polls read two across on a wide
+     window, like the comments above them. */
+  .cgm-polls { border-top: 1px solid var(--cgm-line); margin-top: 24px; padding-top: 16px; }
+  .cgm-polls-head { align-items: baseline; border-bottom: 1px solid var(--cgm-line); display: flex; gap: 14px; padding-bottom: 7px; }
+  .cgm-polls-title { color: var(--cgm-text); font-size: 13px; font-weight: 800; letter-spacing: 0.02em; margin: 0; text-transform: uppercase; }
+  .cgm-polls-all { color: color-mix(in srgb, var(--cgm-accent) 60%, var(--cgm-text)); font-size: 12px; font-weight: 600; text-decoration: none; }
+  .cgm-polls-all:hover { text-decoration: underline; }
+  .cgm-poll-list { align-items: stretch; column-gap: 64px; display: grid; grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 1100px) {
+    .cgm-poll-list { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  }
+  .cgm-poll { border-bottom: 1px solid var(--cgm-line); padding: 12px 0; }
+  .cgm-poll:last-child { border-bottom: 0; }
+  .cgm-poll-head { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; }
+  .cgm-poll-badge { background: var(--cgm-accent-soft); border-radius: 4px; color: color-mix(in srgb, var(--cgm-accent) 60%, var(--cgm-text)); font-size: 10px; font-weight: 800; letter-spacing: 0.04em; padding: 1px 6px; }
+  .cgm-poll-author { color: var(--cgm-muted); font-size: 12px; font-weight: 600; text-decoration: none; }
+  .cgm-poll-author:hover { color: var(--cgm-accent); }
+  .cgm-poll-ends, .cgm-poll-votes, .cgm-poll-age { color: var(--cgm-faint); font-size: 11.5px; }
+  .cgm-poll-question { color: var(--cgm-text); font-size: 14px; font-weight: 700; margin: 7px 0 0; }
+  .cgm-poll-settings { color: var(--cgm-faint); display: block; font-size: 11.5px; margin-top: 3px; }
+  /* Each option is a row: the players it offers at one end, and the vote at
+     the other. The option the reader chose is lit, and the poll is closed:
+     the other options carry their share instead of a live button. */
+  .cgm-poll-options { display: flex; flex-direction: column; gap: 8px; margin-top: 9px; }
+  .cgm-poll-option { align-items: center; background: var(--cgm-surface); border: 1px solid var(--cgm-line); border-radius: 8px; display: flex; gap: 14px; padding: 8px 11px; }
+  .cgm-poll-option--mine { background: color-mix(in srgb, var(--cgm-accent) 20%, var(--cgm-surface)); border-color: color-mix(in srgb, var(--cgm-accent) 45%, var(--cgm-line)); }
+  .cgm-poll-label { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .cgm-poll-comment { color: var(--cgm-text); font-size: 13px; font-weight: 600; }
+  .cgm-poll-player { align-items: center; display: flex; gap: 6px; }
+  .cgm-poll-player a { color: var(--cgm-text) !important; font-size: 13px; font-weight: 600; text-decoration: none; }
+  .cgm-poll-player a:hover { color: var(--cgm-accent) !important; }
+  .cgm-poll-pos { color: var(--cgm-faint); font-size: 10.5px; font-weight: 700; }
+  .cgm-poll-percent { color: var(--cgm-muted); font-size: 12px; font-weight: 700; white-space: nowrap; }
+  .cgm-poll-tail { align-items: center; display: flex; flex: none; gap: 12px; margin-left: auto; }
+  .cgm-poll-choose { background: var(--cgm-accent-soft); border: 1px solid transparent; border-radius: 6px; color: color-mix(in srgb, var(--cgm-accent) 60%, var(--cgm-text)); cursor: pointer; flex: none; font-size: 12px; font-weight: 700; padding: 5px 10px; }
+  .cgm-poll-choose:hover { background: color-mix(in srgb, var(--cgm-accent) 22%, var(--cgm-surface)); }
+  .cgm-poll-choose:disabled { cursor: default; opacity: 0.55; }
+  .cgm-poll-option--mine .cgm-poll-choose { background: var(--cgm-surface); border: 1px solid color-mix(in srgb, var(--cgm-accent) 45%, var(--cgm-line)); opacity: 1; }
+  .cgm-poll-clear { background: none; border: 0; color: var(--cgm-faint); cursor: pointer; font-size: 11.5px; font-weight: 600; margin-top: 8px; padding: 0; text-decoration: underline; text-underline-offset: 3px; }
+  .cgm-poll-clear:hover { color: var(--cgm-accent); }
+  /* ---------- Weekly Projections: the week and the player picker ----------
+     These choices live on the page, not behind the Filters button: the two
+     calendars that set the week, the week buttons, and the picker that says
+     which players the projections are for. The drawer holds the settings. */
+  &.cgm-page-weeklyprojections .row.justify-content-md-left {
+    background: var(--cgm-surface);
+    border: 1px solid var(--cgm-line);
+    border-radius: 10px;
+    gap: 24px;
+    margin: 12px 0 16px;
+    /* The picker is the site's own fixed width; on a narrow window the block
+       scrolls sideways rather than pushing the page out. */
+    overflow-x: auto;
+    padding: 14px 16px;
+  }
+  /* The calendars are the site's own widget; they take the redesign's frame. */
+  &.cgm-page-weeklyprojections table[id$="Calendar"] { border-color: var(--cgm-line) !important; border-radius: 8px; overflow: hidden; }
+  &.cgm-page-weeklyprojections table[id$="Calendar"] td[colspan="7"] { background-color: #4f46e5 !important; border-color: #4f46e5 !important; }
+  &.cgm-page-weeklyprojections table[id$="Calendar"] th { background-color: var(--cgm-line-soft) !important; color: var(--cgm-muted) !important; font-size: 10px !important; }
+  &.cgm-page-weeklyprojections select:not([size]) { background: var(--cgm-surface); border: 1px solid var(--cgm-line); border-radius: 8px; color: var(--cgm-text); font-size: 12.5px; padding: 5px 8px; }
+  &.cgm-page-weeklyprojections input[type="checkbox"] { accent-color: var(--cgm-accent); }
+  /* The player filter rides with the picker it belongs to. */
+  &.cgm-page-weeklyprojections .modern-filter-group { margin: 0 0 12px; }
+  &.cgm-page-weeklyprojections .modern-filter-group .row { margin: 0; }
+  &.cgm-page-weeklyprojections .modern-filter-group .col- { flex: 0 1 auto; padding: 0 10px 0 0; }
+
+  /* The site's own polls page carries the same cards, and the page's own
+     heading and columns with them. The page class sits on the same element as
+     `cgm-bbm`, so the rule has to name it there too. */
+  &.cgm-page-userpolls .container { max-width: none; }
+  &.cgm-page-userpolls .q-up-heading { color: var(--cgm-text) !important; font-size: 13px; font-weight: 800; letter-spacing: 0.02em; margin: 0 0 4px; text-transform: uppercase; }
+  &.cgm-page-userpolls .q-up-holder { align-items: start; border-bottom: 0; column-gap: 64px; display: grid; grid-template-columns: minmax(0, 1fr); }
+  /* The site's own button carries its own brand glow, which is warm and does
+     not match the redesign's indigo. */
+  &.cgm-page-userpolls input[type="submit"].modern-filter-btn-primary { background: #4f46e5 !important; border-color: #4f46e5 !important; box-shadow: none !important; color: #fff !important; }
+  /* The page's own controls keep their nodes and their postbacks, and take the
+     redesign's flat look: the site's toggle pills become small pills of the
+     redesign's own, and the panel behind them goes. */
+  &.cgm-page-userpolls .adv-controls { background: none; border: 0; box-shadow: none; margin: 0 0 12px; padding: 0; }
+  &.cgm-page-userpolls .adv-controls input[type="checkbox"] + label { background: var(--cgm-surface); border: 1px solid var(--cgm-line); border-radius: 999px; color: var(--cgm-muted); font-size: 12px; font-weight: 600; line-height: 1.6; margin: 0 2px 0 0; padding: 3px 12px; text-shadow: none; }
+  &.cgm-page-userpolls .adv-controls input[type="checkbox"]:checked + label { background: var(--cgm-accent-soft); border-color: color-mix(in srgb, var(--cgm-accent) 45%, var(--cgm-line)); color: color-mix(in srgb, var(--cgm-accent) 60%, var(--cgm-text)); }
+  &.cgm-page-userpolls .adv-controls .ml-2 { align-items: center; color: var(--cgm-muted); display: inline-flex; font-size: 12px; gap: 6px; margin-left: 0 !important; }
+  &.cgm-page-userpolls .adv-controls select { background: var(--cgm-surface); border: 1px solid var(--cgm-line); border-radius: 8px; color: var(--cgm-text); font-size: 12.5px; padding: 4px 8px; }
+  &.cgm-page-userpolls .clearfix { color: var(--cgm-muted); padding: 10px 0 0; }
+  &.cgm-page-userpolls .clearfix label { font-size: 12px; }
+  &.cgm-page-userpolls .p-2 { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; padding: 0 0 16px; }
+  @media (min-width: 1100px) {
+    &.cgm-page-userpolls .q-up-holder { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  }
+
   /* Home comments are teasers until their bodies arrive: the home server never
      sends them, so each empty card folds to one row — player, who commented,
      the thread link, the time. Filled cards read full. */
-  .cgm-comments .comment-card.cgm-empty { align-items: baseline; display: flex; flex-wrap: wrap; gap: 2px 8px; padding: 7px 10px; }
-  .cgm-comments .comment-card.cgm-empty .comment-card-title-row,
-  .cgm-comments .comment-card.cgm-empty .comment-card-username { display: contents; }
-  .cgm-comments .comment-card.cgm-empty .comment-card-title-row > span:last-child { margin-left: auto; order: 9; }
   .cgm-comments .comment-card.cgm-empty .comment-card-actions,
   .cgm-comments .comment-card.cgm-empty .comment-card-reply,
   .cgm-comments .comment-card.cgm-empty .comment-card-text { display: none; }
