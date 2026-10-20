@@ -804,7 +804,7 @@ const rowCells = (row) => [...row.matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/g)].
 // The site's number, or null when the cell holds no value for this player.
 const statValue = (cells, at) => {
   const raw = cells[at];
-  if (raw === undefined) return null;
+  if (raw === undefined || raw === "") return null;
   const value = Number(raw.replace(/[+%,]/g, ""));
   return Number.isFinite(value) ? value : null;
 };
