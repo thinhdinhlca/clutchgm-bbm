@@ -434,7 +434,7 @@ return { applyHeat, fixChips, buildBoards, paintBoards };
 })();
 
 // ---- src/bbm-comments.js
-const { plainName, mentionIndex, markMentions, markBodies, buildCommentCards } = (() => {
+const { sitePlayers, plainName, mentionIndex, markMentions, markBodies, buildCommentCards } = (() => {
 // The comment cards: the home page's User Comments tab, the comments page and
 // the thread under a player's page.
 //
@@ -652,6 +652,11 @@ function buildCard(card) {
     meta.append(time);
     if (holder && holder !== row && !holder.textContent.trim()) holder.remove();
   }
+  // The site's "New" badge sits in front of the player's name and pushes the
+  // name out of the rail the body hangs from. It is about the comment, not the
+  // player, so it goes with the comment's own meta.
+  const badge = row.querySelector(".comment-card-player > .badge-pill-custom, .comment-card-player > .badge");
+  if (badge) meta.prepend(badge);
   row.append(meta);
 }
 
@@ -663,7 +668,7 @@ function buildCommentCards(scope = document) {
   for (const card of cards) buildCard(card);
   markBodies(scope);
 }
-return { plainName, mentionIndex, markMentions, markBodies, buildCommentCards };
+return { sitePlayers, plainName, mentionIndex, markMentions, markBodies, buildCommentCards };
 })();
 
 // ---- src/bbm-disclose.js
@@ -3410,7 +3415,7 @@ return { mineIDs };
 })();
 
 // ---- src/bbm-home.js
-const { elapsedBucket, wordLabel, buildBylines, commentBodies, tweetFromOEmbed, tweetEndpoints, buildNews, buildGames, buildHome } = (() => {
+const { elapsedBucket, wordLabel, teamForNames, buildBylines, tagLineupTeams, commentBodies, tweetFromOEmbed, tweetEndpoints, buildNews, buildGames, buildHome } = (() => {
 // The home page ships its widgets as a row of equal cards that each show
 // everything at once. This rebuilds it as four tabs: Player News (a uniform
 // run of compact stories under elapsed-time headings), NBA Today (the day's
@@ -3439,6 +3444,8 @@ const div = (className, ...nodes) => {
   box.append(...nodes.filter(Boolean));
   return box;
 };
+
+const span = (className, text) => Object.assign(document.createElement("span"), { className, textContent: text });
 
 // The site separates a heading from the widget under it with a non-breaking
 // space. Once the heading moves into a head row that space would sit alone and
@@ -3513,6 +3520,39 @@ function tagStories(cards, bucket = elapsedBucket) {
   return words;
 }
 
+// The team for a list of player names, from the site's own player list: the
+// team most of the named players are on. A free agent holds no team, and a
+// name the site does not list is passed over.
+function teamForNames(names, players) {
+  const index = new Map();
+  for (const player of players) {
+    if (!player?.name) continue;
+    index.set(player.name.toLowerCase(), player.team);
+    for (const alias of player.aliases || []) index.set(alias.toLowerCase(), player.team);
+  }
+  const counts = new Map();
+  for (const name of names) {
+    const team = index.get(String(name).trim().toLowerCase());
+    if (!team || team === "FA") continue;
+    counts.set(team, (counts.get(team) || 0) + 1);
+  }
+  if (!counts.size) return null;
+  return [...counts].sort((a, b) => b[1] - a[1])[0][0];
+}
+
+// The team a starting-lineup card belongs to. The site leaves the team blank
+// on those cards and lists the players as one line of names, so the team comes
+// from the site's own player list.
+function lineupTeam(card, players) {
+  const badge = card.querySelector(".news-card-test-status-corner");
+  if (!badge || !/^starting/i.test(badge.textContent.trim())) return null;
+  if (card.querySelector(".display-player")) return null;
+  const body = card.querySelector(".news-card-test-body")?.textContent || "";
+  const names = body.split(",").map((name) => name.trim()).filter(Boolean);
+  if (names.length < 2) return null;
+  return teamForNames(names, players);
+}
+
 // The card opens with a byline row: headshot plus team logo, RotoWire-style.
 // Runs after the headshots land, so the images exist to move; skipped cards
 // keep the old row and still read fine. A player with no team has no logo to
@@ -3526,6 +3566,27 @@ function buildBylines(root = document) {
     const byline = div("cgm-byline");
     byline.append(head, ...(logo ? [logo] : []));
     card.prepend(byline);
+  }
+}
+
+// The team on a starting-lineup card. The site leaves the team blank and
+// lists the players as one line of names, so the team comes from the site's
+// own player list, and the card carries the team's logo.
+function tagLineupTeams(root = document) {
+  const players = sitePlayers();
+  if (!players.length) return;
+  for (const card of root.querySelectorAll(".news-card")) {
+    if (card.dataset.cgmTeam) continue;
+    const team = lineupTeam(card, players);
+    if (!team) continue;
+    const logo = teamLogo(team, "cgm-logo");
+    if (!logo) continue;
+    const header = card.querySelector(".news-card-test-header-left") || card.querySelector(".news-card-test-header");
+    if (!header) continue;
+    card.dataset.cgmTeam = team;
+    const tag = div("cgm-card-team");
+    tag.append(logo, span("cgm-card-team-name", team));
+    header.prepend(tag);
   }
 }
 
@@ -3859,6 +3920,7 @@ function buildNews(body, { all = false, bucket = elapsedBucket, mine = false } =
       draw();
       enhanceAll(list);
       buildBylines(list);
+      tagLineupTeams(list);
       markMine(cards);
     },
   };
@@ -4040,7 +4102,7 @@ function buildHome() {
 
   pick(readTab());
 }
-return { elapsedBucket, wordLabel, buildBylines, commentBodies, tweetFromOEmbed, tweetEndpoints, buildNews, buildGames, buildHome };
+return { elapsedBucket, wordLabel, teamForNames, buildBylines, tagLineupTeams, commentBodies, tweetFromOEmbed, tweetEndpoints, buildNews, buildGames, buildHome };
 })();
 
 // ---- src/bbm-news.js
@@ -4770,6 +4832,7 @@ function run() {
   // the thread under a player.
   step("comments", () => buildCommentCards());
   step("bylines", () => buildBylines());
+  step("lineup-teams", () => tagLineupTeams());
 
   // Colour fixes depend on which stylesheet is live, so they wait for it, then
   // look once more for late-rendered pieces.

@@ -3,8 +3,8 @@
  "entry": "src/bbm-page.js",
  "bundle": {
   "path": "src/bbm-page.js",
-  "sha256": "3ccf4e1ed02ccbdafdf1602df52fdedee528ce30f34eb20a4aad06ebf72526ef",
-  "bytes": 193078,
+  "sha256": "64fcd226cd9874c6b0b6c7301cad9dc219ee72fa6e0c6e9e0f4ffb0d23c6edc3",
+  "bytes": 196031,
   "modules": [
    {
     "path": "src/bbm-appbar.js",
@@ -28,7 +28,7 @@
    },
    {
     "path": "src/bbm-comments.js",
-    "sha256": "f8e0a337e6b1496edd59bc5e9b024febc2085dae7d29bf26d10f5c47df017541"
+    "sha256": "5b117a4b1fd7a9fba0e1903bc00979f24b8152a3db22ecca1aa482a94b3f5c3f"
    },
    {
     "path": "src/bbm-disclose.js",
@@ -84,7 +84,7 @@
    },
    {
     "path": "src/bbm-home.js",
-    "sha256": "8550d24889e35ab7cc6ecb59747abe456ceb1bb46ba7bcacfa9f728b9c759a46"
+    "sha256": "1df6ba05947f59880417986fbdeadb528342ecb97ed9900da0dcfd18986743db"
    },
    {
     "path": "src/bbm-news.js",
@@ -104,15 +104,15 @@
    },
    {
     "path": "src/bbm-page.js",
-    "sha256": "e739a5da175a7da16ce4581bf5e3b2a67ebded150adea3bcb3af3c71b0595cae"
+    "sha256": "406fd6b546862bbc3f0617bbeaaa09938346059e723d3103928d98ddcd853628"
    }
   ]
  },
  "copied": [
   {
    "path": "src/bbm.css",
-   "sha256": "13edbeadaf8ee7a4a979150eb033f50ac6e38e7a623017e973fcf5e8299cf9f9",
-   "bytes": 81002
+   "sha256": "15c0ba1e9dd5199f92b4ed306c00bb08a80356b97478d39682549aeaec1b0d8d",
+   "bytes": 81479
   },
   {
    "path": "src/assets/nba/atl.png",
@@ -267,7 +267,7 @@
  ],
  "userscript": {
   "path": "bbm-ios.user.js",
-  "sha256": "5b46b4f9a94fdb9e37b6f9a455a1e99d40a91f9ebafade05cb9248c958cb14fd",
+  "sha256": "77ff699b80feed80c130d5dceb5bc26d73cc50026c398f009470212c496ab5ee",
   "bytes": 2082
  }
 }

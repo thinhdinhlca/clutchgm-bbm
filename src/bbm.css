@@ -539,6 +539,12 @@ html.cgm-bbm {
   .cgm-byline .cgm-head { height: 44px; width: 44px; }
   .cgm-byline span.cgm-head.cgm-fallback { font-size: 13px; }
   .cgm-byline .cgm-logo { height: 28px; width: auto; }
+  .cgm-byline-team { color: var(--cgm-muted); font-size: 12px; font-weight: 700; letter-spacing: 0.04em; }
+  /* The team on a starting-lineup card: the site's own list gives it, the
+     bundled logo shows it. */
+  .cgm-card-team { align-items: center; display: inline-flex; gap: 5px; margin-right: 10px; }
+  .cgm-card-team .cgm-logo { height: 18px; width: 18px; }
+  .cgm-card-team-name { color: var(--cgm-muted); font-size: 11.5px; font-weight: 800; letter-spacing: 0.04em; }
   .cgm-story .news-card-test-body { color: var(--cgm-muted); font-size: 14px; }
   .cgm-story:hover .news-card-test-body,
   .cgm-story.cgm-open .news-card-test-body { color: var(--cgm-text); }
