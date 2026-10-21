@@ -1380,7 +1380,7 @@ return { DEFAULT_DAYS, dayBucket, cardNodes, daysIn, loadUpdates, daysControl };
 })();
 
 // ---- src/bbm-matchup.js
-const { headerIndex, streamers, finalBoard, scoreboard, leagueOptions, servesMatchups } = (() => {
+const { headerIndex, todayColumn, streamers, finalBoard, scoreboard, leagueOptions, servesMatchups } = (() => {
 // The matchup page, read.
 //
 // The site's page holds one roster table per side; both tables end with the
@@ -1538,36 +1538,79 @@ function categoryTotals(head, first, second) {
   return { cats, totals, against, compare };
 }
 
-// The games a row still has in the matchup week: the opponent and the site's
-// own value for each of them.
-function rowGames(cells, days) {
+// A day heading reads "Mon 19 0": the weekday, the date, and the league's game
+// count beside it. The calendar shows the weekday and the date.
+const dayLabel = (cell) => String(cell).split(" ").slice(0, 2).join(" ");
+
+// The games a row still has in the matchup week: the opponent, the site's
+// own value for each of them, and the day it falls on.
+function rowGames(cells, days, head, today) {
   const games = [];
   for (const at of days) {
     const parts = (cells[at] || "").split(" ");
     const value = Number(parts[1]);
     if (!parts[0] || !Number.isFinite(value)) continue;
-    games.push({ opponent: parts[0], value });
+    games.push({ opponent: parts[0], value, day: dayLabel(head[at]), ahead: today < 0 || at >= today });
   }
   return games;
 }
 
+// The site's week carries the real dates, so the day the reader is on is the
+// column with today's weekday and date. A week that has rolled on has no such
+// column, and then every game counts as ahead.
+function todayColumn(head) {
+  const now = new Date();
+  const label = `${now.toLocaleDateString("en-US", { weekday: "short" })} ${now.getDate()}`;
+  return head.findIndex((cell) => cell.startsWith(label));
+}
+
+// The matchup week's days, with the ones still ahead marked. The site's own
+// day headings carry the league's game count beside the date; the calendar
+// shows the weekday and the date.
+function weekDays(head) {
+  const today = todayColumn(head);
+  return dayColumns(head).map((at) => ({ label: dayLabel(head[at]), ahead: today < 0 || at >= today }));
+}
+
+// The share of each category the first side is short of, against the other
+// side's own total: the bigger the hole, the more a streamer who fills it is
+// worth.
+function deficits(cats, against, compare) {
+  const out = {};
+  cats.forEach((cat, at) => {
+    if (compare[at] >= 0) return;
+    const base = against[at];
+    out[cat] = base ? Math.abs(compare[at]) / base : 0;
+  });
+  return out;
+}
+
 // What a player is worth to a side in the categories that side is behind.
-function rowHelp(cells, head, behind) {
+// The site's value covers the whole matchup week, so only the share of the
+// player's games that are still ahead counts.
+function rowHelp(cells, head, deficit, share) {
   let help = 0;
   let best = null;
+  let bestWeight = 0;
   for (const { cat, col } of STREAMER_COLUMNS) {
-    if (!behind.includes(cat)) continue;
+    const weight = deficit[cat];
+    if (!weight) continue;
     const value = statValue(cells, headerIndex(head, col));
     if (value === null || value <= 0) continue;
-    help += value;
-    if (!best || value > best.value) best = { cat, value };
+    const contribution = value * weight * share;
+    help += contribution;
+    if (contribution > bestWeight) {
+      bestWeight = contribution;
+      best = { cat, value: round(value * share) };
+    }
   }
   return { help, best };
 }
 
 // The free agents whose remaining games would most help the first side: the
-// ones with the most to give in the categories that side is behind.
-function streamers(roster, other, behind) {
+// ones with the most to give in the categories that side is behind, and the
+// most of that value still ahead.
+function streamers(roster, other, deficit, { today = -1 } = {}) {
   const head = roster.head;
   const days = dayColumns(head);
   const out = [];
@@ -1575,9 +1618,15 @@ function streamers(roster, other, behind) {
     const cells = roster.players[at];
     const name = cells[0];
     if (!name) continue;
-    const games = rowGames(cells, days);
-    const { help, best } = rowHelp(cells, head, behind);
-    if (!games.length || !help) continue;
+    const games = rowGames(cells, days, head, today);
+    if (!games.length) continue;
+    const left = games.filter((game) => game.ahead);
+    if (!left.length) continue;
+    const total = games.reduce((sum, game) => sum + game.value, 0);
+    const leftValue = left.reduce((sum, game) => sum + game.value, 0);
+    const share = total ? leftValue / total : 0;
+    const { help, best } = rowHelp(cells, head, deficit, share);
+    if (!help) continue;
     out.push({
       name,
       href: roster.links?.[at] ?? null,
@@ -1586,6 +1635,7 @@ function streamers(roster, other, behind) {
       help,
       best,
       games,
+      left: left.length,
     });
   }
   return out.sort((a, b) => b.help - a.help).slice(0, 3);
@@ -1648,8 +1698,10 @@ function scoreboard(html) {
   const { cats, totals, against, compare } = categoryTotals(tables[0].head, first, second);
   if (!cats.length) return null;
   // The free agents who would help the first side: the ones with the most to
-  // give in the categories that side is behind.
-  const behind = cats.filter((cat, at) => compare[at] < 0);
+  // give in the categories that side is behind, and the most of that value
+  // still ahead.
+  const deficit = deficits(cats, against, compare);
+  const days = weekDays(tables[0].head);
   return {
     team1,
     team2,
@@ -1657,10 +1709,11 @@ function scoreboard(html) {
     first: totals,
     second: against,
     compare,
+    days,
     // How many players each side's numbers are built from, so the reader can
     // see it against the roster they have.
     players: { first: first.length, second: second.length },
-    streamers: behind.length ? streamers(tables[0], tables[1], behind) : [],
+    streamers: Object.keys(deficit).length ? streamers(tables[0], tables[1], deficit, { today: todayColumn(tables[0].head) }) : [],
     final: finalBoard(page),
   };
 }
@@ -1678,7 +1731,7 @@ function leagueOptions(html) {
 function servesMatchups(html) {
   return /name=['"]Team1DD['"]/.test(String(html));
 }
-return { headerIndex, streamers, finalBoard, scoreboard, leagueOptions, servesMatchups };
+return { headerIndex, todayColumn, streamers, finalBoard, scoreboard, leagueOptions, servesMatchups };
 })();
 
 // ---- src/bbm-espn.js
@@ -2575,18 +2628,34 @@ function matchupLink(text, league) {
   return anchor;
 }
 
-// The Final totals: the site's own season numbers, lined out like the matchup
-// rows, with the chance the first side wins each category.
-function finalBlock(final) {
-  const block = div("cgm-match-final");
-  block.append(span("cgm-match-block-label", "Final"));
-  const rows = div("cgm-match-rows cgm-match-rows--final");
-  for (const [at, cat] of final.cats.entries()) {
-    const row = div("cgm-match-row cgm-match-row--final");
+
+// The site's Final numbers: whole counts as they are, a missing one as a dash.
+const finalNumber = (value) => (value === null || value === undefined ? "—" : String(value));
+
+// The card's table: one grid for both modes, so the categories line up and
+// each number sits under the team it belongs to. The rail between the two
+// sides' numbers is the site's own division.
+function matchTable(board, mode) {
+  const final = mode === "final" && board.final;
+  const cats = final ? final.cats : board.cats;
+  const first = final ? final.first : board.first;
+  const second = final ? final.second : board.second;
+  const compare = final ? final.compare : board.compare;
+  const win = final ? final.win : [];
+  const table = div("cgm-match-table");
+  const head = div("cgm-match-row cgm-match-row--head");
+  head.append(span("cgm-match-cat", ""));
+  head.append(span("cgm-match-side cgm-match-side--one", board.team1));
+  head.append(span("cgm-match-side cgm-match-side--two", board.team2));
+  head.append(span("cgm-match-edge", "Edge"));
+  head.append(span("cgm-match-edge", final ? "Win" : ""));
+  table.append(head);
+  cats.forEach((cat, at) => {
+    const row = div("cgm-match-row");
     row.append(span("cgm-match-cat", cat));
-    const one = span("cgm-match-num cgm-match-num--one", finalNumber(final.first[at]));
-    const two = span("cgm-match-num cgm-match-num--two", finalNumber(final.second[at]));
-    const edge = final.compare[at] ?? 0;
+    const one = span("cgm-match-num cgm-match-num--one", finalNumber(first[at]));
+    const two = span("cgm-match-num cgm-match-num--two", finalNumber(second[at]));
+    const edge = compare[at] ?? 0;
     if (edge > 0) one.classList.add("cgm-match-num--ahead");
     if (edge < 0) two.classList.add("cgm-match-num--ahead");
     row.append(one, two);
@@ -2594,76 +2663,83 @@ function finalBlock(final) {
     if (edge > 0) diff.classList.add("cgm-match-diff--ahead");
     if (edge < 0) diff.classList.add("cgm-match-diff--behind");
     row.append(diff);
-    const win = final.win[at];
-    if (win !== null && win !== undefined) row.append(span("cgm-match-win", `${win}%`));
-    rows.append(row);
-  }
-  block.append(rows);
-  return block;
+    const chance = win[at];
+    row.append(span("cgm-match-win", chance === null || chance === undefined ? "" : `${chance}%`));
+    table.append(row);
+  });
+  return table;
 }
 
-// The site's Final numbers: whole counts as they are, a missing one as a dash.
-const finalNumber = (value) => (value === null || value === undefined ? "—" : String(value));
+// The switch between the matchup week and the season totals.
+function modeSwitch(mode, onPick) {
+  const wrap = div("cgm-match-modes");
+  for (const [key, label] of [["current", "Current"], ["final", "Final"]]) {
+    const button = Object.assign(document.createElement("button"), { type: "button", className: "cgm-match-mode", textContent: label });
+    button.setAttribute("aria-pressed", String(key === mode));
+    if (key === mode) button.classList.add("cgm-match-mode--on");
+    button.addEventListener("click", () => onPick(key));
+    wrap.append(button);
+  }
+  return wrap;
+}
 
-// The free agents who would help the first side: a headshot, the player's own
-// page on the site, the team and the positions, and the games they still have.
-function streamerBlock(team, streamers) {
-  const block = div("cgm-match-streams");
-  const label = span("cgm-match-streams-label", `Streamers for ${team}`);
-  label.title = "The free agents whose matchup week helps most in the categories this team is behind.";
-  block.append(label);
-  const list = div("cgm-match-stream-list");
+
+// The player's cell on the calendar: the headshot, the link to the site's own
+// page, the team and the positions.
+function streamerCell(streamer) {
+  const who = div("cgm-cal-player");
+  const shot = headshot(streamer.name, "cgm-shot cgm-match-shot");
+  if (shot) who.append(shot);
+  const text = div("cgm-cal-text");
+  text.append(streamer.href
+    ? Object.assign(document.createElement("a"), { className: "cgm-match-stream-name", href: pageURL(streamer.href), textContent: streamer.name })
+    : span("cgm-match-stream-name", streamer.name));
+  const meta = div("cgm-match-stream-meta");
+  if (streamer.team) {
+    const logo = teamLogo(streamer.team, "cgm-logo cgm-match-logo");
+    if (logo) meta.append(logo);
+    meta.append(span("cgm-match-stream-team", streamer.team));
+  }
+  if (streamer.positions) meta.append(span("cgm-match-stream-pos", `· ${streamer.positions}`));
+  if (meta.children.length) text.append(meta);
+  who.append(text);
+  return who;
+}
+
+// The streamers on the matchup week's calendar: each player on the days they
+// have a game, with the days that are behind dimmed.
+function streamerCalendar(board, streamers) {
+  const days = board.days ?? [];
+  const cal = div("cgm-cal");
+  const head = div("cgm-cal-row cgm-cal-row--head");
+  head.append(span("cgm-cal-player", ""));
+  for (const day of days) head.append(span(`cgm-cal-day${day.ahead ? "" : " is-done"}`, day.label));
+  head.append(span("cgm-cal-why", ""));
+  cal.append(head);
   for (const streamer of streamers) {
-    const item = div("cgm-match-stream");
-    const shot = headshot(streamer.name, "cgm-shot cgm-match-shot");
-    if (shot) item.append(shot);
-    const body = div("cgm-match-stream-body");
-    const top = div("cgm-match-stream-top");
-    top.append(streamer.href
-      ? Object.assign(document.createElement("a"), { className: "cgm-match-stream-name", href: pageURL(streamer.href), textContent: streamer.name })
-      : span("cgm-match-stream-name", streamer.name));
-    const meta = div("cgm-match-stream-meta");
-    if (streamer.team) {
-      const logo = teamLogo(streamer.team, "cgm-logo cgm-match-logo");
-      if (logo) meta.append(logo);
-      meta.append(span("cgm-match-stream-team", streamer.team));
+    const row = div("cgm-cal-row");
+    row.append(streamerCell(streamer));
+    for (const day of days) {
+      const game = streamer.games.find((entry) => entry.day === day.label);
+      const cell = span(`cgm-cal-cell${game ? " is-game" : ""}${game && !game.ahead ? " is-done" : ""}`, game ? game.opponent : "");
+      if (game) cell.title = `${game.opponent} · ${game.value}`;
+      row.append(cell);
     }
-    if (streamer.positions) meta.append(span("cgm-match-stream-pos", streamer.positions));
-    if (meta.children.length) top.append(meta);
-    body.append(top);
-    const games = streamer.games.map((game) => game.opponent).join(", ");
-    body.append(span("cgm-match-stream-games", `${streamer.games.length} game${streamer.games.length === 1 ? "" : "s"} · ${games}`));
-    if (streamer.best) body.append(span("cgm-match-stream-best", `${streamer.best.cat} ${streamer.best.value > 0 ? "+" : ""}${streamer.best.value}`));
-    item.append(body);
-    list.append(item);
+    // Why this player: the category the side is short of that they help most,
+    // and how many of their games are still ahead.
+    const why = div("cgm-cal-why");
+    if (streamer.best) why.append(span("cgm-match-stream-best", `${streamer.best.cat} ${streamer.best.value > 0 ? "+" : ""}${streamer.best.value}`));
+    why.append(span("cgm-match-stream-games", `${streamer.left} left`));
+    row.append(why);
+    cal.append(row);
   }
-  block.append(list);
-  return block;
+  return cal;
 }
 
-// The numbers, side by side: the category, each team's total, and the edge.
-function matchRows(board, marks) {
-  const rows = div("cgm-match-rows");
-  for (const [at, mark] of marks.entries()) {
-    const row = div("cgm-match-row");
-    row.append(span("cgm-match-cat", mark.cat));
-    const one = span("cgm-match-num cgm-match-num--one", String(board.first[at]));
-    const two = span("cgm-match-num cgm-match-num--two", String(board.second[at]));
-    if (mark.result === "won") one.classList.add("cgm-match-num--ahead");
-    if (mark.result === "lost") two.classList.add("cgm-match-num--ahead");
-    row.append(one, two);
-    const diff = span("cgm-match-diff", compareText(board.compare[at]));
-    if (mark.result === "won") diff.classList.add("cgm-match-diff--ahead");
-    if (mark.result === "lost") diff.classList.add("cgm-match-diff--behind");
-    row.append(diff);
-    rows.append(row);
-  }
-  return rows;
-}
 
-// One league's card: the score line names its leader, the numbers are lined
-// out under the two teams, the Final totals follow, and the streamers name
-// the free agents who would help the first side.
+// One league's card: the score line names its leader, the table carries the
+// numbers in one grid with a switch between the matchup week and the season
+// totals, and the streamers sit on the week's calendar.
 function matchCard({ id, name, board }) {
   const card = div("cgm-match");
   card.dataset.league = id;
@@ -2673,7 +2749,7 @@ function matchCard({ id, name, board }) {
     card.append(div("cgm-match-note", "Roto league — no matchup scoreboard."));
     return card;
   }
-  const { w, l, t, marks } = scoreLine(board.cats, board.compare);
+  const { w, l, t } = scoreLine(board.cats, board.compare);
   const line = div("cgm-match-score");
   const first = div("cgm-match-team");
   const second = div("cgm-match-team");
@@ -2692,20 +2768,26 @@ function matchCard({ id, name, board }) {
   line.append(first, tally, second);
   card.append(line);
 
-  // The matchup week on the left, the season totals on the right.
+  // One grid for both modes: the categories line up and each number sits
+  // under the team it belongs to.
+  let mode = "current";
   const body = div("cgm-match-body");
-  const week = div("cgm-match-block");
-  week.append(span("cgm-match-block-label", "Matchup week"));
-  week.append(matchRows(board, marks));
-  body.append(week);
-  if (board.final) {
-    const season = div("cgm-match-block cgm-match-block--final");
-    body.append(season);
-    season.append(finalBlock(board.final));
-  }
+  const paint = () => {
+    body.replaceChildren();
+    if (board.final) body.append(modeSwitch(mode, (next) => { mode = next; paint(); }));
+    body.append(matchTable(board, mode));
+  };
+  paint();
   card.append(body);
 
-  if (board.streamers?.length) card.append(streamerBlock(board.team1, board.streamers));
+  if (board.streamers?.length) {
+    const streams = div("cgm-match-streams");
+    const label = span("cgm-match-streams-label", `Streamers for ${board.team1}`);
+    label.title = "The free agents whose matchup week helps most in the categories this team is behind.";
+    streams.append(label);
+    streams.append(streamerCalendar(board, board.streamers));
+    card.append(streams);
+  }
   return card;
 }
 
