@@ -111,8 +111,8 @@
  "copied": [
   {
    "path": "src/bbm.css",
-   "sha256": "9dcca5e86cc1641d43120840bbe72b41690ba05fa1e721f9987da706ebecdaf9",
-   "bytes": 78775
+   "sha256": "c07504b9eb3372b03295f0e42f1ea66da9702394afdca27e3449030305164abe",
+   "bytes": 78980
   },
   {
    "path": "src/assets/nba/atl.png",
@@ -267,7 +267,7 @@
  ],
  "userscript": {
   "path": "bbm-ios.user.js",
-  "sha256": "a162225850eb4da4272ab487a302e71b3f48f9d6572a0feae6368d76d6ac516a",
+  "sha256": "6d2bca0d6759034cb52177e0c50172292800ffa3ba9909bb07fdd256d42db9a7",
   "bytes": 2082
  }
 }

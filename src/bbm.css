@@ -186,9 +186,12 @@ html.cgm-bbm {
      the projections are for. They stay in the bar, where they are always in
      sight. */
   .cgm-controlbar .cgm-choices { align-items: center; display: flex; flex: none; gap: 8px; }
-  .cgm-controlbar .cgm-choices select { background: var(--cgm-surface); border: 1px solid var(--cgm-line); border-radius: 8px; color: var(--cgm-text); font-size: 12.5px; padding: 5px 8px; }
+  .cgm-controlbar .cgm-choices select { background: var(--cgm-surface); border: 1px solid var(--cgm-line); border-radius: 8px; color: var(--cgm-text); font-size: 12.5px; max-width: 150px; padding: 5px 8px; }
   .cgm-controlbar .cgm-choices .modern-filter-group,
   .cgm-controlbar .cgm-choices .row { margin: 0; }
+  /* The site's own select keeps its arrow at the wrapper's edge, so the wrapper
+     has to shrink with the select. */
+  .cgm-controlbar .cgm-choices .bm-native-select { min-width: 0; }
   .cgm-controlbar .cgm-choices .col- { flex: 0 0 auto; padding: 0; }
   .cgm-controlbar .cgm-choices .clearfix { padding: 0; }
   .cgm-actions { margin-left: auto; }
