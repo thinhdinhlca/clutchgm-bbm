@@ -1485,6 +1485,14 @@ function sharedCount(roster, other) {
 
 const ownPlayers = (roster, other) => roster.players.slice(0, roster.players.length - sharedCount(roster, other));
 
+// The players on the injured list hold a spot but cannot play, so a side's
+// calculation leaves them out: the site gives them no minutes and no stats.
+const fitPlayers = (roster, players) => {
+  const at = headerIndex(roster.head, "IR");
+  if (at < 0) return players;
+  return players.filter((cells) => (cells[at] || "").trim().toUpperCase() !== "IR");
+};
+
 // The free agents both rosters end with: the players a reader can still add.
 const freeAgents = (roster, other) => roster.players.slice(roster.players.length - sharedCount(roster, other));
 
@@ -1614,8 +1622,8 @@ function scoreboard(html) {
   if (!team1 || !team2) return null;
   const tables = rosters(page);
   if (tables.length < 2) return null;
-  const first = ownPlayers(tables[0], tables[1]);
-  const second = ownPlayers(tables[1], tables[0]);
+  const first = fitPlayers(tables[0], ownPlayers(tables[0], tables[1]));
+  const second = fitPlayers(tables[1], ownPlayers(tables[1], tables[0]));
   if (!first.length || !second.length) return null;
   const { cats, totals, against, compare } = categoryTotals(tables[0].head, first, second);
   if (!cats.length) return null;
@@ -1629,6 +1637,9 @@ function scoreboard(html) {
     first: totals,
     second: against,
     compare,
+    // How many players each side's numbers are built from, so the reader can
+    // see it against the roster they have.
+    players: { first: first.length, second: second.length },
     streamers: behind.length ? streamers(tables[0], tables[1], behind) : [],
     final: finalBoard(page),
   };
@@ -1809,9 +1820,19 @@ function matchCard({ id, name, board }) {
   }
   const { w, l, t, marks } = scoreLine(board.cats, board.compare);
   const line = div("cgm-match-score");
-  const first = div("cgm-match-team", board.team1);
-  const second = div("cgm-match-team", board.team2);
+  const first = div("cgm-match-team");
+  const second = div("cgm-match-team");
   const tally = div("cgm-match-tally", `${w}–${l}${t ? `–${t}` : ""}`);
+  // The number of players each side's numbers come from, so a roster that is
+  // smaller than the calculation is visible right there.
+  const count = (number) => {
+    if (!number) return null;
+    const label = span("cgm-match-count", `${number} players`);
+    label.title = "The players this side's numbers are built from.";
+    return label;
+  };
+  first.append(span("cgm-match-name", board.team1), count(board.players?.first));
+  second.append(count(board.players?.second), span("cgm-match-name", board.team2));
   (w === l ? null : w > l ? first : second)?.classList.add("cgm-ahead");
   line.append(first, tally, second);
   card.append(line);

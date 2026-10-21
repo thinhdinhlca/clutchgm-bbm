@@ -325,8 +325,12 @@ html.cgm-bbm {
   .cgm-match-league { color: var(--cgm-faint); font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
   .cgm-match-head a { font-size: 12px; white-space: nowrap; }
   .cgm-match-score { align-items: baseline; display: flex; gap: 10px; }
-  .cgm-match-team { flex: 1; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .cgm-match-team:last-child { text-align: right; }
+  .cgm-match-team { align-items: baseline; display: flex; flex: 1; gap: 6px; min-width: 0; }
+  .cgm-match-name { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cgm-match-team:last-child { justify-content: flex-end; }
+  /* How many players the side's numbers are built from, so the reader can see
+     it against the roster they have. */
+  .cgm-match-count { color: var(--cgm-faint); font-size: 11px; font-weight: 600; white-space: nowrap; }
   .cgm-match-tally { font-size: 17px; font-weight: 800; white-space: nowrap; }
   .cgm-ahead { text-decoration: underline; text-underline-offset: 3px; }
   .cgm-match-cats { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
