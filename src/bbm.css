@@ -322,25 +322,58 @@ html.cgm-bbm {
      text itself stays on the passing palette. */
   .cgm-live-stamp { color: var(--cgm-faint); font-size: 12px; }
   .cgm-live-list { display: grid; gap: 0; max-width: 880px; }
-  .cgm-match { background: none; border: 0; border-radius: 0; padding: 12px 2px; }
+  .cgm-match { background: none; border: 0; border-radius: 0; padding: 14px 2px 16px; }
   .cgm-match + .cgm-match { border-top: 1px solid var(--cgm-line-soft); }
-  .cgm-match-head { align-items: baseline; display: flex; gap: 10px; justify-content: space-between; margin-bottom: 8px; }
+  .cgm-match-head { align-items: baseline; display: flex; gap: 10px; justify-content: space-between; margin-bottom: 10px; }
   .cgm-match-league { color: var(--cgm-faint); font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
   .cgm-match-head a { font-size: 12px; white-space: nowrap; }
-  .cgm-match-score { align-items: baseline; display: flex; gap: 10px; }
+  .cgm-match-score { align-items: center; display: flex; gap: 12px; }
   .cgm-match-team { align-items: baseline; display: flex; flex: 1; gap: 6px; min-width: 0; }
-  .cgm-match-name { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cgm-match-name { font-size: 14px; font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cgm-match-team:last-child { justify-content: flex-end; }
   /* How many players the side's numbers are built from, so the reader can see
      it against the roster they have. */
   .cgm-match-count { color: var(--cgm-faint); font-size: 11px; font-weight: 600; white-space: nowrap; }
-  .cgm-match-tally { font-size: 17px; font-weight: 800; white-space: nowrap; }
+  .cgm-match-tally { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; white-space: nowrap; }
   .cgm-ahead { text-decoration: underline; text-underline-offset: 3px; }
-  .cgm-match-cats { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
-  .cgm-cat { align-items: center; border: 1px solid var(--cgm-line); border-radius: 999px; color: var(--cgm-muted); display: inline-flex; font-size: 11px; font-weight: 700; gap: 5px; padding: 1px 8px; &::before { border-radius: 50%; content: ""; height: 6px; width: 6px; } }
-  .cgm-cat--won::before { background: #22c55e; }
-  .cgm-cat--lost::before { background: #f87171; }
-  .cgm-cat--tied::before { background: var(--cgm-faint); }
+  /* The matchup week on the left, the season totals on the right; one column
+     when the panel is narrow. */
+  .cgm-match-body { display: grid; gap: 16px 28px; grid-template-columns: minmax(0, 1fr); margin-top: 12px; }
+  @media (min-width: 760px) { .cgm-match-body { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .cgm-match-block { min-width: 0; }
+  .cgm-match-block-label { color: var(--cgm-faint); font-size: 10.5px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+  .cgm-match-rows { display: grid; gap: 4px 14px; margin-top: 8px; max-width: 440px; }
+  .cgm-match-row { align-items: baseline; column-gap: 16px; display: grid; grid-template-columns: 42px 84px 84px 56px; }
+  .cgm-match-cat { color: var(--cgm-muted); font-size: 11.5px; font-weight: 700; }
+  .cgm-match-num { font-size: 13px; font-variant-numeric: tabular-nums; }
+  .cgm-match-num--one { text-align: right; }
+  .cgm-match-num--two { text-align: left; }
+  .cgm-match-num--ahead { font-weight: 700; }
+  .cgm-match-diff { color: var(--cgm-faint); font-size: 12px; text-align: right; }
+  .cgm-match-diff--ahead { color: color-mix(in srgb, #16a34a 65%, var(--cgm-text)); font-weight: 700; }
+  .cgm-match-diff--behind { color: color-mix(in srgb, #dc2626 65%, var(--cgm-text)); font-weight: 700; }
+  /* The Final totals: the site's own season numbers, under the matchup rows. */
+  .cgm-match-final { min-width: 0; }
+  .cgm-match-rows--final { margin-top: 8px; }
+  .cgm-match-row--final { grid-template-columns: 42px 68px 68px 46px 40px; }
+  .cgm-match-win { color: var(--cgm-muted); font-size: 11.5px; text-align: right; }
+  /* The streamers: a card per player, with the headshot, the link to the
+     site's own player page, the team and the positions. */
+  .cgm-match-streams { border-top: 1px solid var(--cgm-line-soft); margin-top: 14px; padding-top: 12px; }
+  .cgm-match-streams-label { color: var(--cgm-faint); font-size: 10.5px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+  .cgm-match-stream-list { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); margin-top: 9px; }
+  .cgm-match-stream { align-items: center; background: var(--cgm-surface); border: 1px solid var(--cgm-line-soft); border-radius: 10px; display: flex; gap: 10px; padding: 8px 10px; }
+  .cgm-match-shot { border-radius: 999px; flex: none; height: 38px; width: 38px; }
+  .cgm-match-stream-body { display: grid; gap: 1px; min-width: 0; }
+  .cgm-match-stream-top { align-items: baseline; display: flex; gap: 10px; justify-content: space-between; }
+  .cgm-match-stream-name { color: color-mix(in srgb, var(--cgm-accent) 70%, var(--cgm-text)); font-size: 13px; font-weight: 700; }
+  a.cgm-match-stream-name:hover { text-decoration: underline; }
+  .cgm-match-stream-meta { align-items: center; color: var(--cgm-muted); display: flex; font-size: 11px; gap: 5px; white-space: nowrap; }
+  .cgm-match-logo { height: 14px; width: 14px; }
+  .cgm-match-stream-team { font-weight: 700; }
+  .cgm-match-stream-pos { color: var(--cgm-faint); }
+  .cgm-match-stream-games { color: var(--cgm-muted); font-size: 11.5px; }
+  .cgm-match-stream-best { color: color-mix(in srgb, #16a34a 65%, var(--cgm-text)); font-size: 11.5px; font-weight: 700; }
   .cgm-match-note { color: var(--cgm-faint); font-size: 12.5px; }
   /* ---------- NBA Today: the day's games with their live scores ----------
      One row per game: both sides with their logos, the scores, the tip time
@@ -778,32 +811,11 @@ html.cgm-bbm {
   &.cgm-page-weeklyprojections select:not([size]) { background: var(--cgm-surface); border: 1px solid var(--cgm-line); border-radius: 8px; color: var(--cgm-text); font-size: 12.5px; padding: 5px 8px; }
   &.cgm-page-weeklyprojections input[type="checkbox"] { accent-color: var(--cgm-accent); }
 
-  /* ---------- Matchup Monster: the numbers and the streamers ---------- */
+  /* ---------- Matchup Monster: the numbers and the streamers ----------
+     The card's own styles live with the rest of the live tab's styles, above
+     the page rules; only the link to the site's own page is styled here. */
   .cgm-match-link { color: color-mix(in srgb, var(--cgm-accent) 60%, var(--cgm-text)); font-size: 12px; font-weight: 600; white-space: nowrap; }
   .cgm-match-link:hover { text-decoration: underline; }
-  .cgm-match-rows { display: grid; gap: 3px 14px; margin-top: 9px; max-width: 440px; }
-  .cgm-match-row { align-items: baseline; column-gap: 16px; display: grid; grid-template-columns: 42px 84px 84px 56px; }
-  /* The Final totals: the site's own season numbers, under the matchup rows. */
-  .cgm-match-final { border-top: 1px solid var(--cgm-line-soft); margin-top: 11px; padding-top: 9px; }
-  .cgm-match-final-label { color: var(--cgm-faint); font-size: 10.5px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
-  .cgm-match-rows--final { margin-top: 6px; }
-  .cgm-match-row--final { grid-template-columns: 42px 68px 68px 46px 40px; }
-  .cgm-match-win { color: var(--cgm-muted); font-size: 11.5px; text-align: right; }
-  .cgm-match-cat { color: var(--cgm-muted); font-size: 11.5px; font-weight: 700; }
-  .cgm-match-num { font-size: 13px; font-variant-numeric: tabular-nums; }
-  .cgm-match-num--one { text-align: right; }
-  .cgm-match-num--two { text-align: left; }
-  .cgm-match-num--ahead { font-weight: 700; }
-  .cgm-match-diff { color: var(--cgm-faint); font-size: 12px; text-align: right; }
-  .cgm-match-diff--ahead { color: color-mix(in srgb, #16a34a 65%, var(--cgm-text)); font-weight: 700; }
-  .cgm-match-diff--behind { color: color-mix(in srgb, #dc2626 65%, var(--cgm-text)); font-weight: 700; }
-  .cgm-match-streams { border-top: 1px solid var(--cgm-line-soft); margin-top: 11px; padding-top: 9px; }
-  .cgm-match-streams-label { color: var(--cgm-faint); font-size: 10.5px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
-  .cgm-match-stream-list { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 6px; }
-  .cgm-match-stream { align-items: baseline; display: flex; gap: 7px; }
-  .cgm-match-stream-name { color: var(--cgm-text); font-size: 12.5px; font-weight: 700; }
-  .cgm-match-stream-games { color: var(--cgm-faint); font-size: 11.5px; }
-  .cgm-match-stream-best { color: color-mix(in srgb, #16a34a 65%, var(--cgm-text)); font-size: 11.5px; font-weight: 700; }
 
   /* The site's own polls page carries the same cards, and the page's own
      heading and columns with them. The page class sits on the same element as

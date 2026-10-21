@@ -15,9 +15,9 @@
 //   src/bbm-filters.js
 //   src/bbm-updates.js
 //   src/bbm-matchup.js
-//   src/bbm-live.js
 //   src/bbm-espn.js
 //   src/bbm-images.js
+//   src/bbm-live.js
 //   src/bbm-boxsheet.js
 //   src/bbm-today.js
 //   src/bbm-mine.js
@@ -1438,13 +1438,19 @@ const headerIndex = (head, name) => head.findIndex((cell) => cell.toLowerCase() 
 // The roster's schedule: the columns that hold a day of the matchup week.
 const dayColumns = (head) => head.map((cell, at) => (/^[A-Z][a-z]{2} \d{1,2}/.test(cell) ? at : -1)).filter((at) => at >= 0);
 
+// The site's own link to a player: "playerinfo.aspx?i=3930".
+const playerHref = (row) => {
+  const link = String(row).match(/<a[^>]+href=["']([^"']*playerinfo\.aspx[^"']*)["']/i);
+  return link ? link[1] : null;
+};
+
 // The page's two roster tables, each with its header row and its players.
 function rosters(html) {
   return [...String(html).matchAll(/<table[^>]*modern-stats-table[^>]*>([\s\S]*?)<\/table>/g)]
     .map((match) => {
       const rows = [...match[1].matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)].map((row) => row[1]);
       if (rows.length < 2) return null;
-      return { head: rowCells(rows[0]), players: rows.slice(1).map(rowCells) };
+      return { head: rowCells(rows[0]), players: rows.slice(1).map(rowCells), links: rows.slice(1).map(playerHref) };
     })
     .filter((roster) => roster && headerIndex(roster.head, "p/g") >= 0);
 }
@@ -1494,7 +1500,12 @@ const fitPlayers = (roster, players) => {
 };
 
 // The free agents both rosters end with: the players a reader can still add.
-const freeAgents = (roster, other) => roster.players.slice(roster.players.length - sharedCount(roster, other));
+// Where each free agent sits in the roster, so the card can link the player
+// and show the team and the positions the site lists.
+const freeAgentAt = (roster, other) => {
+  const shared = sharedCount(roster, other);
+  return roster.players.map((_, at) => at).slice(roster.players.length - shared);
+};
 
 // One side's total for a category: the counting ones are summed over the
 // roster, the rates are averaged and shown in points.
@@ -1560,13 +1571,22 @@ function streamers(roster, other, behind) {
   const head = roster.head;
   const days = dayColumns(head);
   const out = [];
-  for (const cells of freeAgents(roster, other)) {
+  for (const at of freeAgentAt(roster, other)) {
+    const cells = roster.players[at];
     const name = cells[0];
     if (!name) continue;
     const games = rowGames(cells, days);
     const { help, best } = rowHelp(cells, head, behind);
     if (!games.length || !help) continue;
-    out.push({ name, help, best, games });
+    out.push({
+      name,
+      href: roster.links?.[at] ?? null,
+      team: cells[1] || "",
+      positions: cells[2] || "",
+      help,
+      best,
+      games,
+    });
   }
   return out.sort((a, b) => b.help - a.help).slice(0, 3);
 }
@@ -1659,302 +1679,6 @@ function servesMatchups(html) {
   return /name=['"]Team1DD['"]/.test(String(html));
 }
 return { headerIndex, streamers, finalBoard, scoreboard, leagueOptions, servesMatchups };
-})();
-
-// ---- src/bbm-live.js
-const { scoreLine, setLeague, leagueBoards, renderLive } = (() => {
-// Matchup Monster tab: one card per league with the matchup score, the two
-// teams' numbers lined out, and the free agents who would help the reader's
-// side. The site serves the matchup page only when the session already carries
-// a league, and the league picker posts back to the page it lives on, so a
-// refresh sets the league from the home page and then reads the matchup page
-// league by league (each response carries the next post's viewstate). Anything
-// that fails keeps the previous cards rather than emptying the tab.
-
-
-
-const SCORE_URL = "matchupmonster.aspx";
-const REFRESH_MS = 10 * 60 * 1000;
-const LIVE_KEY = "cgmBbmLive";
-
-// Which side each category belongs to: the Compare row already points the
-// right way (a negative turnover diff means more turnovers, hence losing),
-// so its sign is the result. Games played is a count, not a won category,
-// and stays out of the line.
-function scoreLine(cats, compare) {
-  const marks = [];
-  let w = 0;
-  let l = 0;
-  let t = 0;
-  cats.forEach((cat, at) => {
-    if (String(cat).toLowerCase() === "g") return;
-    const diff = compare[at];
-    if (!diff) {
-      t += 1;
-      marks.push({ cat, result: "tied" });
-      return;
-    }
-    if (diff > 0) {
-      w += 1;
-      marks.push({ cat, result: "won" });
-    } else {
-      l += 1;
-      marks.push({ cat, result: "lost" });
-    }
-  });
-  return { w, l, t, marks };
-}
-
-// Set the league the session carries. The site's league picker posts back to
-// the page it lives on, and the home page's picker is the one that can be
-// posted from anywhere.
-async function setLeague(id) {
-  const home = await (await fetch(location.href, { credentials: "same-origin" })).text();
-  await postFields(location.href, hiddenFields(home), { __EVENTTARGET: "pageTitleRowLeague", __EVENTARGUMENT: "", pageTitleRowLeague: id });
-}
-
-// Walk every league, reporting each board as it arrives. The session's league
-// is restored afterwards, so a later visit to the matchup page lands where
-// the reader left it.
-async function leagueBoards({ onLeague, onUnavailable } = {}) {
-  if (new URL(pageURL(SCORE_URL)).origin !== location.origin) return;
-  // The site answers the matchup page with a redirect to the rankings when the
-  // session carries no league, and the league picker posts back to the page it
-  // lives on, so the league is set from the home page first.
-  const home = await (await fetch(location.href, { credentials: "same-origin" })).text();
-  const leagues = leagueOptions(home);
-  if (!leagues.length) {
-    onUnavailable?.();
-    return;
-  }
-  const current = leagues.find((league) => league.selected)?.id ?? leagues[0].id;
-  try {
-    await setLeague(current);
-  } catch { /* the session may already carry a league */ }
-  let html = await (await fetch(pageURL(SCORE_URL), { credentials: "same-origin" })).text();
-  if (!servesMatchups(html)) {
-    onUnavailable?.();
-    return;
-  }
-  // The matchup page carries the same league picker as the home page.
-  const options = leagueOptions(html);
-  let showing = current;
-  for (const league of options) {
-    try {
-      if (league.id !== showing) {
-        html = await postFields(pageURL(SCORE_URL), hiddenFields(html), { __EVENTTARGET: "pageTitleRowLeague", __EVENTARGUMENT: "", pageTitleRowLeague: league.id });
-        showing = league.id;
-      }
-      onLeague?.({ id: league.id, name: league.name, board: scoreboard(html) });
-    } catch { /* one league failing leaves the rest standing */ }
-  }
-  if (showing !== current) {
-    try { await postFields(pageURL(SCORE_URL), hiddenFields(html), { __EVENTTARGET: "pageTitleRowLeague", __EVENTARGUMENT: "", pageTitleRowLeague: current }); } catch { /* the league picker keeps the last league; harmless */ }
-  }
-}
-
-const div = (className, ...nodes) => {
-  const box = document.createElement("div");
-  box.className = className;
-  box.append(...nodes.filter(Boolean));
-  return box;
-};
-
-const span = (className, text) => Object.assign(document.createElement("span"), { className, textContent: text });
-
-// "Open matchup" opens the site's own matchup page. The page answers for the
-// league in the session, so the league is set first and the page asked for
-// afterwards.
-function matchupLink(text, league) {
-  const anchor = Object.assign(document.createElement("a"), { className: "cgm-match-link", href: pageURL(SCORE_URL), textContent: text });
-  anchor.addEventListener("click", (event) => {
-    event.preventDefault();
-    const go = () => { location.href = pageURL(SCORE_URL); };
-    if (!league) return go();
-    setLeague(league.id).then(go, go);
-  });
-  return anchor;
-}
-
-// The Final totals: the site's own season numbers, lined out like the matchup
-// rows, with the chance the first side wins each category.
-function finalBlock(final) {
-  const block = div("cgm-match-final");
-  block.append(span("cgm-match-final-label", "Final"));
-  const rows = div("cgm-match-rows cgm-match-rows--final");
-  for (const [at, cat] of final.cats.entries()) {
-    const row = div("cgm-match-row cgm-match-row--final");
-    row.append(span("cgm-match-cat", cat));
-    const one = span("cgm-match-num cgm-match-num--one", finalNumber(final.first[at]));
-    const two = span("cgm-match-num cgm-match-num--two", finalNumber(final.second[at]));
-    const edge = final.compare[at] ?? 0;
-    if (edge > 0) one.classList.add("cgm-match-num--ahead");
-    if (edge < 0) two.classList.add("cgm-match-num--ahead");
-    row.append(one, two);
-    const diff = span("cgm-match-diff", compareText(edge));
-    if (edge > 0) diff.classList.add("cgm-match-diff--ahead");
-    if (edge < 0) diff.classList.add("cgm-match-diff--behind");
-    row.append(diff);
-    const win = final.win[at];
-    if (win !== null && win !== undefined) row.append(span("cgm-match-win", `${win}%`));
-    rows.append(row);
-  }
-  block.append(rows);
-  return block;
-}
-
-// The site's Final numbers: whole counts as they are, a missing one as a dash.
-const finalNumber = (value) => (value === null || value === undefined ? "—" : String(value));
-
-// One league's card: the score line names its leader, the numbers are lined
-// out under the two teams, the Final totals follow, and the streamers name
-// the free agents who would help the first side.
-function matchCard({ id, name, board }) {
-  const card = div("cgm-match");
-  card.dataset.league = id;
-  const head = div("cgm-match-head", div("cgm-match-league", name), matchupLink("Open matchup →", { id }));
-  card.append(head);
-  if (!board) {
-    card.append(div("cgm-match-note", "Roto league — no matchup scoreboard."));
-    return card;
-  }
-  const { w, l, t, marks } = scoreLine(board.cats, board.compare);
-  const line = div("cgm-match-score");
-  const first = div("cgm-match-team");
-  const second = div("cgm-match-team");
-  const tally = div("cgm-match-tally", `${w}–${l}${t ? `–${t}` : ""}`);
-  // The number of players each side's numbers come from, so a roster that is
-  // smaller than the calculation is visible right there.
-  const count = (number) => {
-    if (!number) return null;
-    const label = span("cgm-match-count", `${number} players`);
-    label.title = "The players this side's numbers are built from.";
-    return label;
-  };
-  first.append(span("cgm-match-name", board.team1), count(board.players?.first));
-  second.append(count(board.players?.second), span("cgm-match-name", board.team2));
-  (w === l ? null : w > l ? first : second)?.classList.add("cgm-ahead");
-  line.append(first, tally, second);
-  card.append(line);
-
-  // The numbers, side by side: the category, each team's total, and the edge.
-  const rows = div("cgm-match-rows");
-  for (const [at, mark] of marks.entries()) {
-    const row = div("cgm-match-row");
-    row.append(span("cgm-match-cat", mark.cat));
-    const one = span("cgm-match-num cgm-match-num--one", String(board.first[at]));
-    const two = span("cgm-match-num cgm-match-num--two", String(board.second[at]));
-    if (mark.result === "won") one.classList.add("cgm-match-num--ahead");
-    if (mark.result === "lost") two.classList.add("cgm-match-num--ahead");
-    row.append(one, two);
-    const edge = compareText(board.compare[at]);
-    const diff = span("cgm-match-diff", edge);
-    if (mark.result === "won") diff.classList.add("cgm-match-diff--ahead");
-    if (mark.result === "lost") diff.classList.add("cgm-match-diff--behind");
-    row.append(diff);
-    rows.append(row);
-  }
-  card.append(rows);
-
-  if (board.final) card.append(finalBlock(board.final));
-
-  if (board.streamers?.length) {
-    const streams = div("cgm-match-streams");
-    const label = span("cgm-match-streams-label", `Streamers for ${board.team1}`);
-    label.title = "The free agents whose matchup week helps most in the categories this team is behind.";
-    streams.append(label);
-    const list = div("cgm-match-stream-list");
-    for (const streamer of board.streamers) {
-      const item = div("cgm-match-stream");
-      item.append(span("cgm-match-stream-name", streamer.name));
-      const games = streamer.games.map((game) => game.opponent).join(", ");
-      item.append(span("cgm-match-stream-games", `${streamer.games.length} game${streamer.games.length === 1 ? "" : "s"} · ${games}`));
-      if (streamer.best) item.append(span("cgm-match-stream-best", `${streamer.best.cat} ${streamer.best.value > 0 ? "+" : ""}${streamer.best.value}`));
-      list.append(item);
-    }
-    streams.append(list);
-    card.append(streams);
-  }
-  return card;
-}
-
-// The difference between the two sides, as the site writes it.
-const compareText = (value) => {
-  if (!value) return "0";
-  return `${value > 0 ? "+" : ""}${value}`;
-};
-
-const readLive = () => {
-  try {
-    const cached = JSON.parse(sessionStorage.getItem(LIVE_KEY));
-    if (cached && Date.now() - cached.at < REFRESH_MS) return cached.boards;
-  } catch { /* storage blocked */ }
-  return null;
-};
-
-const writeLive = (boards) => {
-  try { sessionStorage.setItem(LIVE_KEY, JSON.stringify({ at: Date.now(), boards })); } catch { /* storage blocked */ }
-};
-
-// The tab body: a refresh row plus one card per league. Cards render as their
-// leagues arrive, and the timer only refetches while the tab is open.
-function renderLive(panel) {
-  const stamp = div("cgm-live-stamp", "Not updated yet");
-  const refresh = Object.assign(document.createElement("button"), { type: "button", className: "cgm-show-all", textContent: "Refresh" });
-  // The same head row as every other surface: the section's name on the left,
-  // the stamp and the refresh on the right.
-  const bar = div("cgm-panelhead");
-  bar.append(div("cgm-panelhead-left", div("cgm-panelhead-title", "Matchup Monster")), div("cgm-panelhead-left", stamp, refresh));
-  const list = div("cgm-live-list");
-  panel.append(bar, list);
-
-  const boards = [];
-  const upsert = ({ id, name, board }) => {
-    const at = boards.findIndex((entry) => entry.id === id);
-    if (at >= 0) boards[at] = { id, name, board };
-    else boards.push({ id, name, board });
-    list.querySelector(`[data-league="${id}"]`)?.remove();
-    list.append(matchCard({ id, name, board }));
-  };
-  let running = false;
-  const update = async () => {
-    if (running) return;
-    running = true;
-    refresh.disabled = true;
-    try {
-      const cached = readLive();
-      if (cached?.length) {
-        for (const entry of cached) upsert(entry);
-      } else {
-        list.replaceChildren();
-        boards.length = 0;
-        await leagueBoards({
-          onLeague: upsert,
-          onUnavailable: () => {
-            // The site will not serve the matchup page, so there is nothing to
-            // list: say so once instead of showing a league per row with no
-            // scores in them.
-            list.replaceChildren(div("cgm-match-note", "Basketball Monster is not serving the Matchup Monster page right now — it redirects to the rankings when the session carries no league."));
-          },
-        });
-        writeLive(boards);
-      }
-      const time = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-      stamp.textContent = `Updated ${time}`;
-    } catch { /* the previous cards stand; a failed refresh is not a page error */ }
-    running = false;
-    refresh.disabled = false;
-  };
-  refresh.addEventListener("click", () => {
-    try { sessionStorage.removeItem(LIVE_KEY); } catch { /* storage blocked */ }
-    update();
-  });
-  update();
-  setInterval(() => {
-    if (!panel.hidden && !document.hidden) update();
-  }, REFRESH_MS);
-}
-return { scoreLine, setLeague, leagueBoards, renderLive };
 })();
 
 // ---- src/bbm-espn.js
@@ -2733,6 +2457,335 @@ function enhanceAll(root = document) {
   }).observe(document.body, { childList: true, subtree: true });
 }
 return { teamFile, logoPath, teamColor, normalizeName, espnIdFor, headshotURL, initials, headshot, teamLogo, logoURL, enhanceTables, enhanceCards, enhanceGames, enhanceAll };
+})();
+
+// ---- src/bbm-live.js
+const { scoreLine, setLeague, leagueBoards, renderLive } = (() => {
+// Matchup Monster tab: one card per league with the matchup score, the two
+// teams' numbers lined out, and the free agents who would help the reader's
+// side. The site serves the matchup page only when the session already carries
+// a league, and the league picker posts back to the page it lives on, so a
+// refresh sets the league from the home page and then reads the matchup page
+// league by league (each response carries the next post's viewstate). Anything
+// that fails keeps the previous cards rather than emptying the tab.
+
+
+
+
+const SCORE_URL = "matchupmonster.aspx";
+const REFRESH_MS = 10 * 60 * 1000;
+const LIVE_KEY = "cgmBbmLive";
+
+// Which side each category belongs to: the Compare row already points the
+// right way (a negative turnover diff means more turnovers, hence losing),
+// so its sign is the result. Games played is a count, not a won category,
+// and stays out of the line.
+function scoreLine(cats, compare) {
+  const marks = [];
+  let w = 0;
+  let l = 0;
+  let t = 0;
+  cats.forEach((cat, at) => {
+    if (String(cat).toLowerCase() === "g") return;
+    const diff = compare[at];
+    if (!diff) {
+      t += 1;
+      marks.push({ cat, result: "tied" });
+      return;
+    }
+    if (diff > 0) {
+      w += 1;
+      marks.push({ cat, result: "won" });
+    } else {
+      l += 1;
+      marks.push({ cat, result: "lost" });
+    }
+  });
+  return { w, l, t, marks };
+}
+
+// Set the league the session carries. The site's league picker posts back to
+// the page it lives on, and the home page's picker is the one that can be
+// posted from anywhere.
+async function setLeague(id) {
+  const home = await (await fetch(location.href, { credentials: "same-origin" })).text();
+  await postFields(location.href, hiddenFields(home), { __EVENTTARGET: "pageTitleRowLeague", __EVENTARGUMENT: "", pageTitleRowLeague: id });
+}
+
+// Walk every league, reporting each board as it arrives. The session's league
+// is restored afterwards, so a later visit to the matchup page lands where
+// the reader left it.
+async function leagueBoards({ onLeague, onUnavailable } = {}) {
+  if (new URL(pageURL(SCORE_URL)).origin !== location.origin) return;
+  // The site answers the matchup page with a redirect to the rankings when the
+  // session carries no league, and the league picker posts back to the page it
+  // lives on, so the league is set from the home page first.
+  const home = await (await fetch(location.href, { credentials: "same-origin" })).text();
+  const leagues = leagueOptions(home);
+  if (!leagues.length) {
+    onUnavailable?.();
+    return;
+  }
+  const current = leagues.find((league) => league.selected)?.id ?? leagues[0].id;
+  try {
+    await setLeague(current);
+  } catch { /* the session may already carry a league */ }
+  let html = await (await fetch(pageURL(SCORE_URL), { credentials: "same-origin" })).text();
+  if (!servesMatchups(html)) {
+    onUnavailable?.();
+    return;
+  }
+  // The matchup page carries the same league picker as the home page.
+  const options = leagueOptions(html);
+  let showing = current;
+  for (const league of options) {
+    try {
+      if (league.id !== showing) {
+        html = await postFields(pageURL(SCORE_URL), hiddenFields(html), { __EVENTTARGET: "pageTitleRowLeague", __EVENTARGUMENT: "", pageTitleRowLeague: league.id });
+        showing = league.id;
+      }
+      onLeague?.({ id: league.id, name: league.name, board: scoreboard(html) });
+    } catch { /* one league failing leaves the rest standing */ }
+  }
+  if (showing !== current) {
+    try { await postFields(pageURL(SCORE_URL), hiddenFields(html), { __EVENTTARGET: "pageTitleRowLeague", __EVENTARGUMENT: "", pageTitleRowLeague: current }); } catch { /* the league picker keeps the last league; harmless */ }
+  }
+}
+
+const div = (className, ...nodes) => {
+  const box = document.createElement("div");
+  box.className = className;
+  box.append(...nodes.filter(Boolean));
+  return box;
+};
+
+const span = (className, text) => Object.assign(document.createElement("span"), { className, textContent: text });
+
+// "Open matchup" opens the site's own matchup page. The page answers for the
+// league in the session, so the league is set first and the page asked for
+// afterwards.
+function matchupLink(text, league) {
+  const anchor = Object.assign(document.createElement("a"), { className: "cgm-match-link", href: pageURL(SCORE_URL), textContent: text });
+  anchor.addEventListener("click", (event) => {
+    event.preventDefault();
+    const go = () => { location.href = pageURL(SCORE_URL); };
+    if (!league) return go();
+    setLeague(league.id).then(go, go);
+  });
+  return anchor;
+}
+
+// The Final totals: the site's own season numbers, lined out like the matchup
+// rows, with the chance the first side wins each category.
+function finalBlock(final) {
+  const block = div("cgm-match-final");
+  block.append(span("cgm-match-block-label", "Final"));
+  const rows = div("cgm-match-rows cgm-match-rows--final");
+  for (const [at, cat] of final.cats.entries()) {
+    const row = div("cgm-match-row cgm-match-row--final");
+    row.append(span("cgm-match-cat", cat));
+    const one = span("cgm-match-num cgm-match-num--one", finalNumber(final.first[at]));
+    const two = span("cgm-match-num cgm-match-num--two", finalNumber(final.second[at]));
+    const edge = final.compare[at] ?? 0;
+    if (edge > 0) one.classList.add("cgm-match-num--ahead");
+    if (edge < 0) two.classList.add("cgm-match-num--ahead");
+    row.append(one, two);
+    const diff = span("cgm-match-diff", compareText(edge));
+    if (edge > 0) diff.classList.add("cgm-match-diff--ahead");
+    if (edge < 0) diff.classList.add("cgm-match-diff--behind");
+    row.append(diff);
+    const win = final.win[at];
+    if (win !== null && win !== undefined) row.append(span("cgm-match-win", `${win}%`));
+    rows.append(row);
+  }
+  block.append(rows);
+  return block;
+}
+
+// The site's Final numbers: whole counts as they are, a missing one as a dash.
+const finalNumber = (value) => (value === null || value === undefined ? "—" : String(value));
+
+// The free agents who would help the first side: a headshot, the player's own
+// page on the site, the team and the positions, and the games they still have.
+function streamerBlock(team, streamers) {
+  const block = div("cgm-match-streams");
+  const label = span("cgm-match-streams-label", `Streamers for ${team}`);
+  label.title = "The free agents whose matchup week helps most in the categories this team is behind.";
+  block.append(label);
+  const list = div("cgm-match-stream-list");
+  for (const streamer of streamers) {
+    const item = div("cgm-match-stream");
+    const shot = headshot(streamer.name, "cgm-shot cgm-match-shot");
+    if (shot) item.append(shot);
+    const body = div("cgm-match-stream-body");
+    const top = div("cgm-match-stream-top");
+    top.append(streamer.href
+      ? Object.assign(document.createElement("a"), { className: "cgm-match-stream-name", href: pageURL(streamer.href), textContent: streamer.name })
+      : span("cgm-match-stream-name", streamer.name));
+    const meta = div("cgm-match-stream-meta");
+    if (streamer.team) {
+      const logo = teamLogo(streamer.team, "cgm-logo cgm-match-logo");
+      if (logo) meta.append(logo);
+      meta.append(span("cgm-match-stream-team", streamer.team));
+    }
+    if (streamer.positions) meta.append(span("cgm-match-stream-pos", streamer.positions));
+    if (meta.children.length) top.append(meta);
+    body.append(top);
+    const games = streamer.games.map((game) => game.opponent).join(", ");
+    body.append(span("cgm-match-stream-games", `${streamer.games.length} game${streamer.games.length === 1 ? "" : "s"} · ${games}`));
+    if (streamer.best) body.append(span("cgm-match-stream-best", `${streamer.best.cat} ${streamer.best.value > 0 ? "+" : ""}${streamer.best.value}`));
+    item.append(body);
+    list.append(item);
+  }
+  block.append(list);
+  return block;
+}
+
+// The numbers, side by side: the category, each team's total, and the edge.
+function matchRows(board, marks) {
+  const rows = div("cgm-match-rows");
+  for (const [at, mark] of marks.entries()) {
+    const row = div("cgm-match-row");
+    row.append(span("cgm-match-cat", mark.cat));
+    const one = span("cgm-match-num cgm-match-num--one", String(board.first[at]));
+    const two = span("cgm-match-num cgm-match-num--two", String(board.second[at]));
+    if (mark.result === "won") one.classList.add("cgm-match-num--ahead");
+    if (mark.result === "lost") two.classList.add("cgm-match-num--ahead");
+    row.append(one, two);
+    const diff = span("cgm-match-diff", compareText(board.compare[at]));
+    if (mark.result === "won") diff.classList.add("cgm-match-diff--ahead");
+    if (mark.result === "lost") diff.classList.add("cgm-match-diff--behind");
+    row.append(diff);
+    rows.append(row);
+  }
+  return rows;
+}
+
+// One league's card: the score line names its leader, the numbers are lined
+// out under the two teams, the Final totals follow, and the streamers name
+// the free agents who would help the first side.
+function matchCard({ id, name, board }) {
+  const card = div("cgm-match");
+  card.dataset.league = id;
+  const head = div("cgm-match-head", div("cgm-match-league", name), matchupLink("Open matchup →", { id }));
+  card.append(head);
+  if (!board) {
+    card.append(div("cgm-match-note", "Roto league — no matchup scoreboard."));
+    return card;
+  }
+  const { w, l, t, marks } = scoreLine(board.cats, board.compare);
+  const line = div("cgm-match-score");
+  const first = div("cgm-match-team");
+  const second = div("cgm-match-team");
+  const tally = div("cgm-match-tally", `${w}–${l}${t ? `–${t}` : ""}`);
+  // The number of players each side's numbers come from, so a roster that is
+  // smaller than the calculation is visible right there.
+  const count = (number) => {
+    if (!number) return null;
+    const label = span("cgm-match-count", `${number} players`);
+    label.title = "The players this side's numbers are built from.";
+    return label;
+  };
+  first.append(span("cgm-match-name", board.team1), count(board.players?.first));
+  second.append(count(board.players?.second), span("cgm-match-name", board.team2));
+  (w === l ? null : w > l ? first : second)?.classList.add("cgm-ahead");
+  line.append(first, tally, second);
+  card.append(line);
+
+  // The matchup week on the left, the season totals on the right.
+  const body = div("cgm-match-body");
+  const week = div("cgm-match-block");
+  week.append(span("cgm-match-block-label", "Matchup week"));
+  week.append(matchRows(board, marks));
+  body.append(week);
+  if (board.final) {
+    const season = div("cgm-match-block cgm-match-block--final");
+    body.append(season);
+    season.append(finalBlock(board.final));
+  }
+  card.append(body);
+
+  if (board.streamers?.length) card.append(streamerBlock(board.team1, board.streamers));
+  return card;
+}
+
+// The difference between the two sides, as the site writes it.
+const compareText = (value) => {
+  if (!value) return "0";
+  return `${value > 0 ? "+" : ""}${value}`;
+};
+
+const readLive = () => {
+  try {
+    const cached = JSON.parse(sessionStorage.getItem(LIVE_KEY));
+    if (cached && Date.now() - cached.at < REFRESH_MS) return cached.boards;
+  } catch { /* storage blocked */ }
+  return null;
+};
+
+const writeLive = (boards) => {
+  try { sessionStorage.setItem(LIVE_KEY, JSON.stringify({ at: Date.now(), boards })); } catch { /* storage blocked */ }
+};
+
+// The tab body: a refresh row plus one card per league. Cards render as their
+// leagues arrive, and the timer only refetches while the tab is open.
+function renderLive(panel) {
+  const stamp = div("cgm-live-stamp", "Not updated yet");
+  const refresh = Object.assign(document.createElement("button"), { type: "button", className: "cgm-show-all", textContent: "Refresh" });
+  // The same head row as every other surface: the section's name on the left,
+  // the stamp and the refresh on the right.
+  const bar = div("cgm-panelhead");
+  bar.append(div("cgm-panelhead-left", div("cgm-panelhead-title", "Matchup Monster")), div("cgm-panelhead-left", stamp, refresh));
+  const list = div("cgm-live-list");
+  panel.append(bar, list);
+
+  const boards = [];
+  const upsert = ({ id, name, board }) => {
+    const at = boards.findIndex((entry) => entry.id === id);
+    if (at >= 0) boards[at] = { id, name, board };
+    else boards.push({ id, name, board });
+    list.querySelector(`[data-league="${id}"]`)?.remove();
+    list.append(matchCard({ id, name, board }));
+  };
+  let running = false;
+  const update = async () => {
+    if (running) return;
+    running = true;
+    refresh.disabled = true;
+    try {
+      const cached = readLive();
+      if (cached?.length) {
+        for (const entry of cached) upsert(entry);
+      } else {
+        list.replaceChildren();
+        boards.length = 0;
+        await leagueBoards({
+          onLeague: upsert,
+          onUnavailable: () => {
+            // The site will not serve the matchup page, so there is nothing to
+            // list: say so once instead of showing a league per row with no
+            // scores in them.
+            list.replaceChildren(div("cgm-match-note", "Basketball Monster is not serving the Matchup Monster page right now — it redirects to the rankings when the session carries no league."));
+          },
+        });
+        writeLive(boards);
+      }
+      const time = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+      stamp.textContent = `Updated ${time}`;
+    } catch { /* the previous cards stand; a failed refresh is not a page error */ }
+    running = false;
+    refresh.disabled = false;
+  };
+  refresh.addEventListener("click", () => {
+    try { sessionStorage.removeItem(LIVE_KEY); } catch { /* storage blocked */ }
+    update();
+  });
+  update();
+  setInterval(() => {
+    if (!panel.hidden && !document.hidden) update();
+  }, REFRESH_MS);
+}
+return { scoreLine, setLeague, leagueBoards, renderLive };
 })();
 
 // ---- src/bbm-boxsheet.js
