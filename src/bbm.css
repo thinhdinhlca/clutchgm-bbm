@@ -776,6 +776,12 @@ html.cgm-bbm {
   .cgm-match-link:hover { text-decoration: underline; }
   .cgm-match-rows { display: grid; gap: 3px 14px; margin-top: 9px; max-width: 440px; }
   .cgm-match-row { align-items: baseline; column-gap: 16px; display: grid; grid-template-columns: 42px 84px 84px 56px; }
+  /* The Final totals: the site's own season numbers, under the matchup rows. */
+  .cgm-match-final { border-top: 1px solid var(--cgm-line-soft); margin-top: 11px; padding-top: 9px; }
+  .cgm-match-final-label { color: var(--cgm-faint); font-size: 10.5px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+  .cgm-match-rows--final { margin-top: 6px; }
+  .cgm-match-row--final { grid-template-columns: 42px 68px 68px 46px 40px; }
+  .cgm-match-win { color: var(--cgm-muted); font-size: 11.5px; text-align: right; }
   .cgm-match-cat { color: var(--cgm-muted); font-size: 11.5px; font-weight: 700; }
   .cgm-match-num { font-size: 13px; font-variant-numeric: tabular-nums; }
   .cgm-match-num--one { text-align: right; }

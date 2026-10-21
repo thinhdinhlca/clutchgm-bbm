@@ -1380,7 +1380,7 @@ return { DEFAULT_DAYS, dayBucket, cardNodes, daysIn, loadUpdates, daysControl };
 })();
 
 // ---- src/bbm-matchup.js
-const { headerIndex, streamers, scoreboard, leagueOptions, servesMatchups } = (() => {
+const { headerIndex, streamers, finalBoard, scoreboard, leagueOptions, servesMatchups } = (() => {
 // The matchup page, read.
 //
 // The site's page holds one roster table per side; both tables end with the
@@ -1448,6 +1448,25 @@ function rosters(html) {
     })
     .filter((roster) => roster && headerIndex(roster.head, "p/g") >= 0);
 }
+
+// The site's summary tables write some cells self-closing, so their cells are
+// read apart: an empty cell is a cell, not a missing one.
+const summaryCells = (row) =>
+  [...String(row).matchAll(/<t[hd]([^>]*?)(\/>|>([\s\S]*?)<\/t[hd]>)/g)].map((match) => cellText(match[3] ?? ""));
+
+// The Final table's columns, in the card's own words.
+const FINAL_LABELS = {
+  g: "G",
+  p: "PTS",
+  3: "3PM",
+  r: "REB",
+  a: "AST",
+  s: "STL",
+  b: "BLK",
+  "fg%": "FG%",
+  "ft%": "FT%",
+  to: "TO",
+};
 
 // Both tables end with the league's free agents, so the shared tail is what
 // the two sides agree on and each side's own players are what is left in
@@ -1544,6 +1563,42 @@ function streamers(roster, other, behind) {
   return out.sort((a, b) => b.help - a.help).slice(0, 3);
 }
 
+// The site's Final table: the two teams' season totals, the edge between them,
+// and the chance the first side wins each category. The site writes its rates
+// as ".485" and its edge as "+58"; the card shows the rates in points, like
+// its own per-game numbers, and the chance as a percentage.
+function finalBoard(html) {
+  const page = String(html);
+  const heading = page.match(/<h[1-6][^>]*>\s*Final\s*<\/h[1-6]>/i);
+  if (!heading) return null;
+  const table = page.slice(heading.index + heading[0].length).match(/<table[^>]*>([\s\S]*?)<\/table>/);
+  if (!table) return null;
+  const rows = [...table[1].matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)].map((row) => summaryCells(row[1]));
+  if (rows.length < 4) return null;
+  const labels = rows[0].slice(1).map((label) => label.toLowerCase());
+  const body = rows.slice(1).filter((cells) => cells[0] && cells[0] !== "Select Targets");
+  const sides = body.filter((cells) => !/^(compare|win probability)$/i.test(cells[0]));
+  const compare = body.find((cells) => /^compare$/i.test(cells[0]));
+  const win = body.find((cells) => /^win probability$/i.test(cells[0]));
+  if (sides.length < 2 || !compare) return null;
+  // The site's numbers, with the rates in points.
+  const values = (cells, rates) =>
+    labels.map((label, at) => {
+      const raw = String(cells[at + 1] ?? "").replace(/[%+,]/g, "").trim();
+      if (!raw) return null;
+      const number = Number(raw);
+      if (!Number.isFinite(number)) return null;
+      return rates && (label === "fg%" || label === "ft%") ? Math.round(number * 1000) / 10 : number;
+    });
+  return {
+    cats: labels.map((label) => FINAL_LABELS[label] ?? label.toUpperCase()),
+    first: values(sides[0], true),
+    second: values(sides[1], true),
+    compare: values(compare, true),
+    win: win ? values(win, false) : [],
+  };
+}
+
 // The board: the two sides' names, their totals per category, and the
 // difference. A positive difference always means the first side wins the
 // category, so fewer turnovers counts in the first side's favour.
@@ -1575,6 +1630,7 @@ function scoreboard(html) {
     second: against,
     compare,
     streamers: behind.length ? streamers(tables[0], tables[1], behind) : [],
+    final: finalBoard(page),
   };
 }
 
@@ -1591,7 +1647,7 @@ function leagueOptions(html) {
 function servesMatchups(html) {
   return /name=['"]Team1DD['"]/.test(String(html));
 }
-return { headerIndex, streamers, scoreboard, leagueOptions, servesMatchups };
+return { headerIndex, streamers, finalBoard, scoreboard, leagueOptions, servesMatchups };
 })();
 
 // ---- src/bbm-live.js
@@ -1709,9 +1765,39 @@ function matchupLink(text, league) {
   return anchor;
 }
 
+// The Final totals: the site's own season numbers, lined out like the matchup
+// rows, with the chance the first side wins each category.
+function finalBlock(final) {
+  const block = div("cgm-match-final");
+  block.append(span("cgm-match-final-label", "Final"));
+  const rows = div("cgm-match-rows cgm-match-rows--final");
+  for (const [at, cat] of final.cats.entries()) {
+    const row = div("cgm-match-row cgm-match-row--final");
+    row.append(span("cgm-match-cat", cat));
+    const one = span("cgm-match-num cgm-match-num--one", finalNumber(final.first[at]));
+    const two = span("cgm-match-num cgm-match-num--two", finalNumber(final.second[at]));
+    const edge = final.compare[at] ?? 0;
+    if (edge > 0) one.classList.add("cgm-match-num--ahead");
+    if (edge < 0) two.classList.add("cgm-match-num--ahead");
+    row.append(one, two);
+    const diff = span("cgm-match-diff", compareText(edge));
+    if (edge > 0) diff.classList.add("cgm-match-diff--ahead");
+    if (edge < 0) diff.classList.add("cgm-match-diff--behind");
+    row.append(diff);
+    const win = final.win[at];
+    if (win !== null && win !== undefined) row.append(span("cgm-match-win", `${win}%`));
+    rows.append(row);
+  }
+  block.append(rows);
+  return block;
+}
+
+// The site's Final numbers: whole counts as they are, a missing one as a dash.
+const finalNumber = (value) => (value === null || value === undefined ? "—" : String(value));
+
 // One league's card: the score line names its leader, the numbers are lined
-// out under the two teams, and the streamers name the free agents who would
-// help the first side.
+// out under the two teams, the Final totals follow, and the streamers name
+// the free agents who would help the first side.
 function matchCard({ id, name, board }) {
   const card = div("cgm-match");
   card.dataset.league = id;
@@ -1748,6 +1834,8 @@ function matchCard({ id, name, board }) {
     rows.append(row);
   }
   card.append(rows);
+
+  if (board.final) card.append(finalBlock(board.final));
 
   if (board.streamers?.length) {
     const streams = div("cgm-match-streams");
