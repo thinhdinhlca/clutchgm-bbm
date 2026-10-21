@@ -182,6 +182,15 @@ html.cgm-bbm {
   .cgm-chip-label { color: var(--cgm-faint); font-size: 11px; }
   .cgm-chip-value { font-weight: 700; }
   .cgm-slot { align-items: center; display: flex; flex: none; gap: 6px; }
+  /* The choices a reader makes while they read: the player filter and the team
+     the projections are for. They stay in the bar, where they are always in
+     sight. */
+  .cgm-controlbar .cgm-choices { align-items: center; display: flex; flex: none; gap: 8px; }
+  .cgm-controlbar .cgm-choices select { background: var(--cgm-surface); border: 1px solid var(--cgm-line); border-radius: 8px; color: var(--cgm-text); font-size: 12.5px; padding: 5px 8px; }
+  .cgm-controlbar .cgm-choices .modern-filter-group,
+  .cgm-controlbar .cgm-choices .row { margin: 0; }
+  .cgm-controlbar .cgm-choices .col- { flex: 0 0 auto; padding: 0; }
+  .cgm-controlbar .cgm-choices .clearfix { padding: 0; }
   .cgm-actions { margin-left: auto; }
   .cgm-positions .modern-filter-badges { display: flex; flex-wrap: nowrap; gap: 4px; }
   .cgm-controlbar .modern-filter-btn, .cgm-controlbar .modern-filter-btn-primary { font-size: 12px; height: 32px; padding: 0 11px; }
@@ -742,10 +751,8 @@ html.cgm-bbm {
   .cgm-poll-option--mine .cgm-poll-choose { background: var(--cgm-surface); border: 1px solid color-mix(in srgb, var(--cgm-accent) 45%, var(--cgm-line)); opacity: 1; }
   .cgm-poll-clear { background: none; border: 0; color: var(--cgm-faint); cursor: pointer; font-size: 11.5px; font-weight: 600; margin-top: 8px; padding: 0; text-decoration: underline; text-underline-offset: 3px; }
   .cgm-poll-clear:hover { color: var(--cgm-accent); }
-  /* ---------- Weekly Projections: the week and the player picker ----------
-     These choices live on the page, not behind the Filters button: the two
-     calendars that set the week, the week buttons, and the picker that says
-     which players the projections are for. The drawer holds the settings. */
+  /* The Weekly Projections page keeps its week and the player picker on the
+     page; the drawer holds the settings. */
   &.cgm-page-weeklyprojections .row.justify-content-md-left {
     background: var(--cgm-surface);
     border: 1px solid var(--cgm-line);
@@ -763,10 +770,27 @@ html.cgm-bbm {
   &.cgm-page-weeklyprojections table[id$="Calendar"] th { background-color: var(--cgm-line-soft) !important; color: var(--cgm-muted) !important; font-size: 10px !important; }
   &.cgm-page-weeklyprojections select:not([size]) { background: var(--cgm-surface); border: 1px solid var(--cgm-line); border-radius: 8px; color: var(--cgm-text); font-size: 12.5px; padding: 5px 8px; }
   &.cgm-page-weeklyprojections input[type="checkbox"] { accent-color: var(--cgm-accent); }
-  /* The player filter rides with the picker it belongs to. */
-  &.cgm-page-weeklyprojections .modern-filter-group { margin: 0 0 12px; }
-  &.cgm-page-weeklyprojections .modern-filter-group .row { margin: 0; }
-  &.cgm-page-weeklyprojections .modern-filter-group .col- { flex: 0 1 auto; padding: 0 10px 0 0; }
+
+  /* ---------- Matchup Monster: the numbers and the streamers ---------- */
+  .cgm-match-link { color: color-mix(in srgb, var(--cgm-accent) 60%, var(--cgm-text)); font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .cgm-match-link:hover { text-decoration: underline; }
+  .cgm-match-rows { display: grid; gap: 3px 14px; margin-top: 9px; max-width: 440px; }
+  .cgm-match-row { align-items: baseline; column-gap: 16px; display: grid; grid-template-columns: 42px 84px 84px 56px; }
+  .cgm-match-cat { color: var(--cgm-muted); font-size: 11.5px; font-weight: 700; }
+  .cgm-match-num { font-size: 13px; font-variant-numeric: tabular-nums; }
+  .cgm-match-num--one { text-align: right; }
+  .cgm-match-num--two { text-align: left; }
+  .cgm-match-num--ahead { font-weight: 700; }
+  .cgm-match-diff { color: var(--cgm-faint); font-size: 12px; text-align: right; }
+  .cgm-match-diff--ahead { color: color-mix(in srgb, #16a34a 65%, var(--cgm-text)); font-weight: 700; }
+  .cgm-match-diff--behind { color: color-mix(in srgb, #dc2626 65%, var(--cgm-text)); font-weight: 700; }
+  .cgm-match-streams { border-top: 1px solid var(--cgm-line-soft); margin-top: 11px; padding-top: 9px; }
+  .cgm-match-streams-label { color: var(--cgm-faint); font-size: 10.5px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+  .cgm-match-stream-list { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 6px; }
+  .cgm-match-stream { align-items: baseline; display: flex; gap: 7px; }
+  .cgm-match-stream-name { color: var(--cgm-text); font-size: 12.5px; font-weight: 700; }
+  .cgm-match-stream-games { color: var(--cgm-faint); font-size: 11.5px; }
+  .cgm-match-stream-best { color: color-mix(in srgb, #16a34a 65%, var(--cgm-text)); font-size: 11.5px; font-weight: 700; }
 
   /* The site's own polls page carries the same cards, and the page's own
      heading and columns with them. The page class sits on the same element as

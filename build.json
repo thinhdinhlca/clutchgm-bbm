@@ -3,8 +3,8 @@
  "entry": "src/bbm-page.js",
  "bundle": {
   "path": "src/bbm-page.js",
-  "sha256": "45935c96a7341a8bd2de00cae80ad15ec8c6028bb49299909c57f3a9e82265ef",
-  "bytes": 176498,
+  "sha256": "645691d4870a455546ded0a44cfe2e19286d1bdee7386c8c83466d9e2f661ab3",
+  "bytes": 182811,
   "modules": [
    {
     "path": "src/bbm-appbar.js",
@@ -48,15 +48,19 @@
    },
    {
     "path": "src/bbm-filters.js",
-    "sha256": "4647f3dd25be06a78be02ecd6e361492dba73704a28fe2bcf10b77a2cbd565bc"
+    "sha256": "c2006347db32701d694106856110cdc69802e553031c4d179c2853b01d6a8801"
    },
    {
     "path": "src/bbm-updates.js",
     "sha256": "44cc10b14e8d9067bf244d9113ef0fe9b27260bc2c50b333b29909c6fa244c27"
    },
    {
+    "path": "src/bbm-matchup.js",
+    "sha256": "fe8a1a2b0675ca035326719ed92db43c350129608b413ae8fb5a4b68549f7dc7"
+   },
+   {
     "path": "src/bbm-live.js",
-    "sha256": "d3333632282a24e4de62fb6b17e660a12558fba30a099b328bf612bb792cf643"
+    "sha256": "4a392d403ca59b5acae3f34a161ac8768e06b00d727003da55f2d2370bb4072e"
    },
    {
     "path": "src/bbm-espn.js",
@@ -107,8 +111,8 @@
  "copied": [
   {
    "path": "src/bbm.css",
-   "sha256": "576b7f4285acbed181b0dd01a5aa8820705dea861debf6bc11fbd26e1ececd81",
-   "bytes": 75964
+   "sha256": "f893d5aff07a3ea8e0a9b938e73575ecde0ef68155ed575ea4f9f22d43e2eca7",
+   "bytes": 77926
   },
   {
    "path": "src/assets/nba/atl.png",
@@ -263,7 +267,7 @@
  ],
  "userscript": {
   "path": "bbm-ios.user.js",
-  "sha256": "277464337fa20feb0fdd7b54abbc957a965fe49fbdaaba59d23dc36b9a9a4b27",
+  "sha256": "648b6768a47fb315cfed97619dd8e2db4709caa9561f124e94411a6b7181be44",
   "bytes": 2082
  }
 }
