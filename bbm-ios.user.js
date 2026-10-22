@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ClutchGM — Basketball Monster redesign
 // @namespace    https://github.com/thinhdinhlca/clutchgm-bbm
-// @version      0.7.5
+// @version      0.7.6
 // @description  Restyles Basketball Monster pages and adds the Trade Monster guidance card. Personal install.
 // @author       thinhdinhlca
 // @match        *://basketballmonster.com/*

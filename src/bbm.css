@@ -1301,6 +1301,11 @@ html.cgm-bbm {
   }
   &.cgm-page-playerinfo .cgm-day.cgm-off > * { grid-column: 1; }
   &.cgm-page-playerinfo .cgm-day.cgm-off::before { display: none; }
+  /* A day that is already played keeps the opponent and the team's colours,
+     but sits back so the days still ahead read first. */
+  &.cgm-page-playerinfo .cgm-day.is-past {
+    opacity: 0.55;
+  }
   &.cgm-page-playerinfo .cgm-day-dow {
     /* The team tint lifts the card's background off pure white, so the
        weekday label needs the stronger muted tone to hold its contrast. */
