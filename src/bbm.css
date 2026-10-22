@@ -523,6 +523,7 @@ html.cgm-bbm {
     padding: 0;
     position: relative;
     > .cgm-byline { align-items: center; display: flex; flex-direction: column; gap: 6px; grid-column: 1; grid-row: 1 / span 4; justify-content: flex-start; padding-top: 2px; }
+    > .cgm-lineup-title { align-self: center; grid-column: 2; grid-row: 1; margin: 0; }
     > .news-card-test-header { align-self: start; display: flex; grid-column: 2; grid-row: 1; justify-content: flex-end; margin: 0; }
     > .display-player { align-items: center; display: flex; flex-wrap: wrap; gap: 4px 10px; grid-column: 2; grid-row: 1; min-width: 0; }
     > .news-card-test-body-row { grid-column: 2; grid-row: 2; line-height: 1.5; margin-top: 0; }
@@ -593,13 +594,14 @@ html.cgm-bbm {
     text-transform: uppercase;
     white-space: nowrap;
   }
-  /* A line-up is not an injury: the label says so, in black, and the card
-     takes a neutral tint instead of a severity's colour. */
-  .cgm-lineup { background: #000 !important; border-color: #000 !important; color: #fff !important; }
+  /* A line-up is not an injury: its label stands where the player's name
+     stands, and the card takes a neutral tint instead of a severity's
+     colour. */
   .cgm-lineup-card {
     --cgm-status: #64748b !important;
     background: color-mix(in srgb, #64748b var(--cgm-tint, 9%), var(--cgm-tint-base, transparent)) !important;
   }
+  .cgm-lineup-title { color: var(--cgm-text); font-size: 17px; font-weight: 800; letter-spacing: 0.01em; text-transform: uppercase; }
   .news-card-test-header-left { align-items: center; display: flex; gap: 10px; }
   /* The priority word becomes a dot in its own level colour, which the site
      already sets inline on the element. */

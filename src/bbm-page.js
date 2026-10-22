@@ -3614,12 +3614,12 @@ function dressStories(root = document) {
     // One player starting is a note about that player, not a line-up.
     if (card.querySelector(".display-player")) continue;
     badge.dataset.cgmLineup = "1";
-    badge.textContent = "STARTING LINE-UP";
-    badge.classList.add("cgm-lineup");
-    // The site's own script writes the label's colour on it, so the black is
-    // written the same way.
-    badge.style.setProperty("background", "#000", "important");
-    badge.style.setProperty("color", "#fff", "important");
+    // The label stands where the player's name stands, in the name's own
+    // style, so the card reads like every other card. The site's badge has
+    // no room for it and goes.
+    const title = span("cgm-lineup-title", "STARTING LINE-UP");
+    card.prepend(title);
+    badge.closest(".news-card-test-corner-group")?.remove();
     card.classList.add("cgm-lineup-card");
     // The site's own tooltip leaves the team blank; the card now knows it.
     const tip = card.querySelector(`#${badge.dataset.bmTooltip}`);
