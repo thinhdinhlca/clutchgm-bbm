@@ -593,6 +593,13 @@ html.cgm-bbm {
     text-transform: uppercase;
     white-space: nowrap;
   }
+  /* A line-up is not an injury: the label says so, in black, and the card
+     takes a neutral tint instead of a severity's colour. */
+  .cgm-lineup { background: #000 !important; border-color: #000 !important; color: #fff !important; }
+  .cgm-lineup-card {
+    --cgm-status: #64748b !important;
+    background: color-mix(in srgb, #64748b var(--cgm-tint, 9%), var(--cgm-tint-base, transparent)) !important;
+  }
   .news-card-test-header-left { align-items: center; display: flex; gap: 10px; }
   /* The priority word becomes a dot in its own level colour, which the site
      already sets inline on the element. */

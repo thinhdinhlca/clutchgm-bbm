@@ -3415,7 +3415,7 @@ return { mineIDs };
 })();
 
 // ---- src/bbm-home.js
-const { elapsedBucket, wordLabel, teamForNames, buildBylines, tagLineupTeams, commentBodies, tweetFromOEmbed, tweetEndpoints, buildNews, buildGames, buildHome } = (() => {
+const { elapsedBucket, wordLabel, teamForNames, buildBylines, dressStories, tagLineupTeams, commentBodies, tweetFromOEmbed, tweetEndpoints, buildNews, buildGames, buildHome } = (() => {
 // The home page ships its widgets as a row of equal cards that each show
 // everything at once. This rebuilds it as four tabs: Player News (a uniform
 // run of compact stories under elapsed-time headings), NBA Today (the day's
@@ -3571,6 +3571,60 @@ function buildBylines(root = document) {
     const byline = div("cgm-byline");
     byline.append(head, ...(logo ? [logo] : []));
     card.prepend(byline);
+  }
+}
+
+// The team's own colour. The site keeps one CSS variable per team, so a name
+// can borrow the very colour the team's chip uses; the light and the dark
+// stylesheet each carry their own value for it.
+const knownTeams = new Set();
+
+const teamColour = (card) => {
+  const chip = card.querySelector(".display-player-team");
+  const abbreviation = chip?.textContent.trim() || "";
+  if (!/^[A-Z]{2,4}$/.test(abbreviation)) return null;
+  // The chip's own colour is the site's answer when it has one.
+  const written = chip.style.color.match(/var\((--team-nba-[a-z]+)\)/i)?.[1];
+  if (written) return `var(${written})`;
+  const variable = `--team-nba-${abbreviation.toLowerCase()}`;
+  if (!knownTeams.has(variable)) {
+    if (!getComputedStyle(document.documentElement).getPropertyValue(variable).trim()) return null;
+    knownTeams.add(variable);
+  }
+  return `var(${variable})`;
+};
+
+// The cards in one pass. A player's name takes the colour of the team the
+// player is on. A line-up card says what it is, and says it in black, because
+// a line-up is not an injury and must not wear a severity's colour.
+function dressStories(root = document) {
+  const players = sitePlayers();
+  for (const card of root.querySelectorAll(".news-card")) {
+    const name = card.querySelector(".display-player-name");
+    if (name && !name.dataset.cgmColour) {
+      const colour = teamColour(card);
+      if (colour) {
+        name.dataset.cgmColour = "1";
+        name.style.setProperty("color", colour, "important");
+      }
+    }
+    const badge = card.querySelector(".news-card-test-status-corner");
+    if (!badge || badge.dataset.cgmLineup) continue;
+    if (!/^starting/i.test(badge.textContent.trim())) continue;
+    // One player starting is a note about that player, not a line-up.
+    if (card.querySelector(".display-player")) continue;
+    badge.dataset.cgmLineup = "1";
+    badge.textContent = "STARTING LINE-UP";
+    badge.classList.add("cgm-lineup");
+    // The site's own script writes the label's colour on it, so the black is
+    // written the same way.
+    badge.style.setProperty("background", "#000", "important");
+    badge.style.setProperty("color", "#fff", "important");
+    card.classList.add("cgm-lineup-card");
+    // The site's own tooltip leaves the team blank; the card now knows it.
+    const tip = card.querySelector(`#${badge.dataset.bmTooltip}`);
+    const side = players.length ? lineupTeam(card, players) : null;
+    if (tip && side) tip.textContent = `Starting - ${side}`;
   }
 }
 
@@ -3897,6 +3951,7 @@ function buildNews(body, { all = false, bucket = elapsedBucket, mine = false } =
   body.prepend(head);
   body.append(list, empty, more);
   draw();
+  dressStories(list);
 
   if (mine) {
     const check = mineBox.querySelector("input");
@@ -3925,6 +3980,7 @@ function buildNews(body, { all = false, bucket = elapsedBucket, mine = false } =
       enhanceAll(list);
       buildBylines(list);
       tagLineupTeams(list);
+      dressStories(list);
       markMine(cards);
     },
   };
@@ -4106,7 +4162,7 @@ function buildHome() {
 
   pick(readTab());
 }
-return { elapsedBucket, wordLabel, teamForNames, buildBylines, tagLineupTeams, commentBodies, tweetFromOEmbed, tweetEndpoints, buildNews, buildGames, buildHome };
+return { elapsedBucket, wordLabel, teamForNames, buildBylines, dressStories, tagLineupTeams, commentBodies, tweetFromOEmbed, tweetEndpoints, buildNews, buildGames, buildHome };
 })();
 
 // ---- src/bbm-news.js
@@ -4848,6 +4904,7 @@ function run() {
   step("comments", () => buildCommentCards());
   step("bylines", () => buildBylines());
   step("lineup-teams", () => tagLineupTeams());
+  step("dress-stories", () => dressStories());
 
   // Colour fixes depend on which stylesheet is live, so they wait for it, then
   // look once more for late-rendered pieces.
