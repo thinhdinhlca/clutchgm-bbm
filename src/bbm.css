@@ -497,17 +497,23 @@ html.cgm-bbm {
   .cgm-stories > .cgm-dayhead:first-child { margin-top: 2px; }
   /* player news: a headshot rail on the left, the name line, the full note,
      and the linked tweet when the story has one, all in one narrow column on
-     the right. Stories are flat rows on the page, never cards: no fills, no
-     borders, no radius. Every card reads the same; there is no lead. */
+     the right. The card keeps the site's own tint, so the severity of an
+     injury reads before the word does; there are no borders and no radius,
+     and every card reads the same; there is no lead. */
   .cgm-story {
-    background: none !important;
+    /* The card's own tint says the severity at a glance: green for a player
+       who is playing, blue or amber for a question mark, red for out. The
+       status colour is the site's own, taken from the badge. The strength and
+       the base are set per theme, because a light surface takes the tint
+       mixed in and a dark one takes it mixed down. */
+    background: color-mix(in srgb, var(--cgm-status, transparent) var(--cgm-tint, 9%), var(--cgm-tint-base, transparent)) !important;
     border: 0;
     border-radius: 0;
     cursor: pointer;
     padding: 12px 2px;
   }
-  /* A story has no surface of its own, so the hover is a faint wash. */
-  .cgm-story:hover { background: color-mix(in srgb, var(--cgm-text) 5%, transparent) !important; }
+  /* The hover lifts the tint a little, and keeps the severity. */
+  .cgm-story:hover { background: color-mix(in srgb, var(--cgm-status, var(--cgm-text)) var(--cgm-tint-hover, 14%), var(--cgm-tint-base, transparent)) !important; }
   .news-card:has(.news-card-test-header) {
     box-shadow: none !important;
     display: grid;
@@ -540,11 +546,8 @@ html.cgm-bbm {
   .cgm-byline span.cgm-head.cgm-fallback { font-size: 13px; }
   .cgm-byline .cgm-logo { height: 28px; width: auto; }
   .cgm-byline-team { color: var(--cgm-muted); font-size: 12px; font-weight: 700; letter-spacing: 0.04em; }
-  /* The team on a starting-lineup card: the site's own list gives it, the
-     bundled logo shows it. */
-  .cgm-card-team { align-items: center; display: inline-flex; gap: 5px; margin-right: 10px; }
-  .cgm-card-team .cgm-logo { height: 18px; width: 18px; }
-  .cgm-card-team-name { color: var(--cgm-muted); font-size: 11.5px; font-weight: 800; letter-spacing: 0.04em; }
+  /* A starting-lineup card's team sits in the rail, under the logo. */
+  .cgm-byline .cgm-logo { height: 26px; width: 26px; }
   .cgm-story .news-card-test-body { color: var(--cgm-muted); font-size: 14px; }
   .cgm-story:hover .news-card-test-body,
   .cgm-story.cgm-open .news-card-test-body { color: var(--cgm-text); }

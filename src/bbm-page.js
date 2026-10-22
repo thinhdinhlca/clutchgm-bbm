@@ -3490,8 +3490,13 @@ function tagStories(cards, bucket = elapsedBucket) {
   const words = new Map();
   for (const card of cards) {
     card.classList.add("cgm-story");
-    const word = card.querySelector(".news-card-test-status-corner")?.textContent.trim() || "";
+    const badge = card.querySelector(".news-card-test-status-corner");
+    const word = badge?.textContent.trim() || "";
     card.dataset.cgmWord = word;
+    // The status carries the severity: green for a player who is playing,
+    // blue or amber for a question mark, red for out. The card's own tint
+    // comes from it, so a reader sees the severity without reading the word.
+    if (badge?.style.backgroundColor) card.style.setProperty("--cgm-status", badge.style.backgroundColor);
     card.dataset.cgmBucket = bucket(card.querySelector(".time-since")?.textContent);
     words.set(word, (words.get(word) || 0) + 1);
     // The priority word becomes a coloured dot, so it keeps its word as a tooltip.
@@ -3571,22 +3576,21 @@ function buildBylines(root = document) {
 
 // The team on a starting-lineup card. The site leaves the team blank and
 // lists the players as one line of names, so the team comes from the site's
-// own player list, and the card carries the team's logo.
+// own player list. The card has no player of its own, so the team's logo takes
+// the rail the other cards keep their headshot in.
 function tagLineupTeams(root = document) {
   const players = sitePlayers();
   if (!players.length) return;
-  for (const card of root.querySelectorAll(".news-card")) {
+  for (const card of root.querySelectorAll(".news-card:not(:has(.cgm-byline))")) {
     if (card.dataset.cgmTeam) continue;
     const team = lineupTeam(card, players);
     if (!team) continue;
     const logo = teamLogo(team, "cgm-logo");
     if (!logo) continue;
-    const header = card.querySelector(".news-card-test-header-left") || card.querySelector(".news-card-test-header");
-    if (!header) continue;
     card.dataset.cgmTeam = team;
-    const tag = div("cgm-card-team");
-    tag.append(logo, span("cgm-card-team-name", team));
-    header.prepend(tag);
+    const byline = div("cgm-byline");
+    byline.append(logo, span("cgm-byline-team", team));
+    card.prepend(byline);
   }
 }
 
@@ -4819,6 +4823,17 @@ function run() {
   if (page === "playerinfo") step("player", buildPlayer);
   if (page === "userpolls") step("polls", buildPollsPage);
   step("notices", foldNotices);
+  // The story cards take their severity tint from the status colour. A light
+  // surface takes the tint mixed in, a dark one takes it mixed down, so the
+  // name keeps its contrast either way.
+  const tint = () => {
+    const dark = currentTheme() === "dark";
+    const root = document.documentElement.style;
+    root.setProperty("--cgm-tint", dark ? "13%" : "9%");
+    root.setProperty("--cgm-tint-hover", dark ? "18%" : "14%");
+    root.setProperty("--cgm-tint-base", dark ? "#000" : "transparent");
+  };
+  step("tint", tint);
   step("status", () => {
     // News cards take their tint from the status badge colour.
     for (const badge of document.querySelectorAll(".news-card-test-status-corner")) {
@@ -4840,7 +4855,7 @@ function run() {
   if (document.readyState === "complete") paint();
   else addEventListener("load", paint, { once: true });
   setTimeout(paint, 2000);
-  step("theme", () => onThemeChange(() => { applyHeat(); fixLegibility(); }));
+  step("theme", () => onThemeChange(() => { tint(); applyHeat(); fixLegibility(); }));
 }
 
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", run, { once: true });
