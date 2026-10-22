@@ -4772,15 +4772,15 @@ async function addPastDays(strip, team, first) {
   if (!wanted.length) return;
   const league = document.querySelector("select[name='pageTitleRowLeague']")?.selectedOptions?.[0]?.textContent?.trim() || null;
   const games = await pastGames(team, wanted, league);
-  if (!games.size) return;
   const block = strip.querySelector(".cgm-week");
   const grid = block && block.querySelector(".cgm-week-days");
   if (!grid) return;
   for (const day of wanted.slice().reverse()) {
     const game = games.get(day.et);
-    if (!game) continue;
-    const card = dayCard(day.dow, day.date, game.away ? `@${game.opponent}` : game.opponent);
-    card.classList.add("is-past");
+    // A day the player did not play still belongs to the week, so it is shown
+    // as the quiet day it was.
+    const card = dayCard(day.dow, day.date, game ? (game.away ? `@${game.opponent}` : game.opponent) : "");
+    if (game) card.classList.add("is-past");
     grid.prepend(card);
   }
   const title = block.querySelector(".cgm-week-title");
